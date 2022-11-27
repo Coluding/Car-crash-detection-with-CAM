@@ -1,4 +1,5 @@
 import torch
+import torchinfo
 from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import ImageFolder
 import torchvision.transforms as tt
@@ -39,13 +40,18 @@ class VGG19(BaseModel):
                 #self._specific_config_file["freeze_backbone_params"]
 
     def _add_classifier(self):
+        print(self.classifier_layer)
         layers = self._create_layers(self.classifier_layer)
 
         self.hparams_dict["classifier_layer"] = layers
 
-        classifier = torch.nn.Sequential(*layers)
+        classifier1 = torch.nn.Sequential(*layers)
 
-        self.model.classifier = classifier
+        # classifier = torch.nn.Sequential(nn.Linear(25088, 4096), nn.Dropout(0.2), nn.ReLU(),
+        #                               nn.Linear(4096, 10))
+        # print(classifier1)
+
+        self.model.classifier = classifier1
 
     def save_model(self):
         if os.path.exists("saved_models/vgg19.model"):
@@ -59,9 +65,8 @@ class VGG19(BaseModel):
 
 if __name__ == "__main__":
     model = VGG19()
-
     logger = loggers.TensorBoardLogger("tb_logger", name="vgg19")
-    logger.log_hyperparams(model.hparams_dict)
+    # logger.log_hyperparams(model.hparams_dict)
     trainer = Trainer(max_epochs=model.epochs, logger=logger, log_every_n_steps=8)
     trainer.fit(model)
     print("ss")

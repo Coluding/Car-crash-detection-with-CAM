@@ -1,17 +1,17 @@
-image_path: '../../../Data'
+image_path: '../../../data'
 
 model_to_use: 'vgg19'
 
 base_model:
     transformations:
-        crop_size: 230
+        crop_size: 200
         flip_degrees: 30
 
 vgg19:
     epochs: 50
     batch_size: 16
     learning_rate: 0.01
-    backbone_weights_require_grad: False
+    freeze_backbone_params: False
     train_test_split_ratio: 0.8
     classifier_dropout_rate : 0.2
     classifier_layer:
@@ -25,5 +25,19 @@ vgg19:
             - 0  # Dropout rate
         - classifier_layer_3:
             - 1024
+            - 10
+            - 0 # Dropout rate
+
+
+resnet:
+    epochs: 50
+    batch_size: 16
+    learning_rate: 0.001
+    freeze_backbone_params: False
+    train_test_split_ratio: 0.8
+    classifier_dropout_rate : 0.2
+    classifier_layer:
+        - classifier_layer_1:
+            - 512
             - 10
             - 0 # Dropout rate

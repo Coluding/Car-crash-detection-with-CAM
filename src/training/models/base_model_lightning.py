@@ -52,19 +52,25 @@ class BaseModel(ABC, pl.LightningModule):
 
     def _create_layers(self, config_list_of_layers):
         final_layer_list = []
-        for layer in config_list_of_layers:
+        for index, layer in enumerate(config_list_of_layers):
+            print(layer)
             nn_layer = nn.Linear(in_features=list(layer.values())[0][0], out_features=list(layer.values())[0][1])
-            dropout_layer = nn.Dropout(list(layer.values())[0][2])
             final_layer_list.append(nn_layer)
-            final_layer_list.append(dropout_layer)
-            final_layer_list.append(nn.ReLU())
+
+            if list(layer.values())[0][2] != 0:
+                dropout_layer = nn.Dropout(list(layer.values())[0][2])
+                final_layer_list.append(dropout_layer)
+
+            if index != len(config_list_of_layers):
+                final_layer_list.append(nn.ReLU())
+
         return final_layer_list
 
     def _collect_hyperparams(self):
         self.epochs = self._specific_config_file["epochs"]
         self.batch_size = self._specific_config_file["batch_size"]
         self.learning_rate = self._specific_config_file["learning_rate"]
-        self.train_backbone_weights = self._specific_config_file["backbone_weights_require_grad"]
+        self.train_backbone_weights = self._specific_config_file["freeze_backbone_params"]
         self.train_test_split_ratio = self._specific_config_file["train_test_split_ratio"]
         self.classifier_layer = self._specific_config_file["classifier_layer"]
 
@@ -94,7 +100,7 @@ class BaseModel(ABC, pl.LightningModule):
         trfs = tt.Compose([tt.RandomVerticalFlip(),
                            tt.RandomHorizontalFlip(),
                            tt.RandomRotation(degrees=30),
-                           tt.RandomCrop(size=200),
+                           #tt.RandomCrop(size=190),
                            self.transforms])
         dataset = ImageFolder(path, transform=trfs)
         split_ratio = 0.8
