@@ -13,14 +13,15 @@ import datetime
 import numpy as np
 import os
 from pytorch_lightning import Trainer
-from src.training.models.base_model_lightning import BaseModel
-from pytorch_lightning import loggers
+from src.training.models.base_model_lightning import BaseModelLightning
+from src.training.models.base_model import BaseModel
 
 
-class VGG19(BaseModel):
+class VGG19Lightning(BaseModelLightning):
     def __init__(self):
         super().__init__()
         self._specific_config_file = self._config_file["vgg19"]
+        self.name = "vgg19"
         self._collect_hyperparams()
         self._set_up_model()
         self._preprocess_images()
@@ -36,8 +37,7 @@ class VGG19(BaseModel):
             self.transforms = weights.transforms()
 
         for param in self.model.parameters():
-            param.requires_grad = False
-                #self._specific_config_file["freeze_backbone_params"]
+            param.requires_grad = self.train_backbone_weights
 
     def _add_classifier(self):
         print(self.classifier_layer)
@@ -46,10 +46,6 @@ class VGG19(BaseModel):
         self.hparams_dict["classifier_layer"] = layers
 
         classifier1 = torch.nn.Sequential(*layers)
-
-        # classifier = torch.nn.Sequential(nn.Linear(25088, 4096), nn.Dropout(0.2), nn.ReLU(),
-        #                               nn.Linear(4096, 10))
-        # print(classifier1)
 
         self.model.classifier = classifier1
 
@@ -63,10 +59,42 @@ class VGG19(BaseModel):
                 pickle.dump(self, f)
 
 
-if __name__ == "__main__":
-    model = VGG19()
-    logger = loggers.TensorBoardLogger("tb_logger", name="vgg19")
-    # logger.log_hyperparams(model.hparams_dict)
-    trainer = Trainer(max_epochs=model.epochs, logger=logger, log_every_n_steps=8)
-    trainer.fit(model)
-    print("ss")
+class VGG19Vanilla(BaseModel):
+    def __init__(self):
+        super().__init__()
+        self._specific_config_file = self._config_file["vgg19"]
+        self.name = "vgg19"
+        self._collect_hyperparams()
+        self._set_up_model()
+        self._load_images()
+
+    def _init_backbone_model(self, new_model=True):
+        if not new_model:
+            self.model = torch.load("saved_models/vgg19.model")
+        else:
+            weights = torchvision.models.VGG19_Weights.DEFAULT
+            self.model = torchvision.models.vgg19(weights)
+            self.transforms = weights.transforms()
+
+        for param in self.model.parameters():
+            param.requires_grad = self.train_backbone_weights
+
+        print(torchinfo.summary(self.model, input_size=(32, 3, 256, 256)))
+
+    def _add_classifier(self):
+        layers, layer_dict = self._create_layers(self.classifier_layer)
+
+        self.hparams_dict = {**self.hparams_dict, **layer_dict}
+
+        classifier1 = torch.nn.Sequential(*layers)
+
+        self.model.classifier = classifier1
+
+    def save_model(self):
+        if os.path.exists("saved_models/vgg19.model"):
+            with open("saved_models/vgg19.model", "wb") as f:
+                pickle.dump(self, f)
+        else:
+            os.mkdir("saved_models")
+            with open("saved_models/vgg19.model", "wb") as f:
+                pickle.dump(self, f)

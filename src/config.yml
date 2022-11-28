@@ -11,7 +11,7 @@ vgg19:
     epochs: 50
     batch_size: 16
     learning_rate: 0.1
-    freeze_backbone_params: False
+    train_backbone_params: False
     train_test_split_ratio: 0.8
     classifier_dropout_rate : 0.2
     classifier_layer:
@@ -30,10 +30,10 @@ vgg19:
 
 
 resnet:
-    epochs: 50
+    epochs: 10
     batch_size: 16
-    learning_rate: 0.001
-    freeze_backbone_params: False
+    learning_rate: 0.1
+    train_backbone_params: True
     train_test_split_ratio: 0.8
     classifier_dropout_rate : 0.2
     classifier_layer:

@@ -11,7 +11,7 @@ import yaml
 from torch.utils.data import DataLoader, random_split
 
 
-class BaseModel(ABC, pl.LightningModule):
+class BaseModelLightning(ABC, pl.LightningModule):
     def __init__(self):
         super().__init__()
 
@@ -71,7 +71,7 @@ class BaseModel(ABC, pl.LightningModule):
         self.epochs = self._specific_config_file["epochs"]
         self.batch_size = self._specific_config_file["batch_size"]
         self.learning_rate = self._specific_config_file["learning_rate"]
-        self.train_backbone_weights = self._specific_config_file["freeze_backbone_params"]
+        self.train_backbone_weights = self._specific_config_file["train_backbone_params"]
         self.train_test_split_ratio = self._specific_config_file["train_test_split_ratio"]
         self.classifier_layer = self._specific_config_file["classifier_layer"]
 
@@ -103,7 +103,7 @@ class BaseModel(ABC, pl.LightningModule):
         trfs = tt.Compose([tt.RandomVerticalFlip(),
                            tt.RandomHorizontalFlip(),
                            tt.RandomRotation(degrees=30),
-                           #tt.RandomCrop(size=190),
+                           tt.RandomCrop(size=190),
                            self.transforms])
         dataset = ImageFolder(path, transform=trfs)
         split_ratio = 0.8
