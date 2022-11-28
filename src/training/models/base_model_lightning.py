@@ -1,3 +1,4 @@
+import pytorch_lightning.callbacks
 import torch
 import torch.nn as nn
 import torchvision
@@ -83,7 +84,9 @@ class BaseModel(ABC, pl.LightningModule):
         return out
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self._specific_config_file["learning_rate"])
+        optim = torch.optim.Adam(self.parameters(), lr=self._specific_config_file["learning_rate"])
+        lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optim)
+        return {"optimizer": optim, "lr_scheduler": lrs, "monitor": "step_training_loss"}
 
     def training_step(self, batch, batch_isx):
         images, labels = batch

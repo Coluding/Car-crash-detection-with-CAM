@@ -10,7 +10,7 @@ base_model:
 vgg19:
     epochs: 50
     batch_size: 16
-    learning_rate: 0.01
+    learning_rate: 0.1
     freeze_backbone_params: False
     train_test_split_ratio: 0.8
     classifier_dropout_rate : 0.2
