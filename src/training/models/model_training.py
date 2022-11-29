@@ -2,12 +2,13 @@ from pytorch_lightning import loggers
 from pytorch_lightning import Trainer
 from resnet import ResNetVanilla
 from vgg19 import VGG19Vanilla
+from custom_model import CustomModel1
 import torch
 
 
 def main():
-    model = VGG19Vanilla()
-    model.fit(optim=torch.optim.Adam, lrs=torch.optim.lr_scheduler.ReduceLROnPlateau, mode="min", patience=2,  verbose=True)
+    model = ResNetVanilla()
+    model.fit(patience=2)
 
 
 if __name__ == "__main__":

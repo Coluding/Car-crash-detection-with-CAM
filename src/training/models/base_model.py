@@ -30,8 +30,6 @@ class BaseModel(ABC, nn.Module):
         self.classes = None
         self.train_loader = None
         self.val_loader = None
-        self.val_accuracy = None
-        self.val_loss = None
         self.history = []
 
     def _collect_hyperparams(self):
@@ -117,6 +115,7 @@ class BaseModel(ABC, nn.Module):
     def _set_up_model(self):
         self._init_backbone_model()
         self._add_classifier()
+        #print(torchinfo.summary(self.model, input_size=(16, 3, 200, 200)))
 
     def forward(self, xb):
         out = self.model(xb)
@@ -126,10 +125,12 @@ class BaseModel(ABC, nn.Module):
         images, labels = batch
         out = self(images)
         loss = F.cross_entropy(out, labels)
+        #loss = nn.NLLLoss(out, labels)
         acc = self.accuracy(out, labels)
         return loss, acc
 
     def validation_step(self, batch):
+        self.eval()
         images, labels = batch
         out = self(images)
         loss = F.cross_entropy(out, labels)
@@ -153,13 +154,12 @@ class BaseModel(ABC, nn.Module):
         can be used to give the scheduler arguments
         :param lrs: Pytorch learning rate scheduler
         :param optim: Pytorch optimizer
-        :param kwargs: additonal keyword arguments for the learning rate scheduler
+        :param kwargs: additional keyword arguments for the learning rate scheduler
         :return: None
         """
         optimizer = optim(self.parameters(), lr=self.learning_rate)
         lrs = lrs(optimizer, **kwargs)
-        print(type(lrs))
-        early_stopper = EarlyStopper(patience=2, min_delta=0.2)
+        early_stopper = EarlyStopper(patience=3, min_delta=0)
         max_acc = 0
 
         for epoch in range(self.epochs):
@@ -173,6 +173,7 @@ class BaseModel(ABC, nn.Module):
                 train_losses.append(loss)
                 train_accs.append(train_acc)
 
+                torch.nn.utils.clip_grad_norm(self.parameters(), 0.01)
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -189,6 +190,7 @@ class BaseModel(ABC, nn.Module):
             self.tb.add_scalar("Val accuracy", result["val_acc"], epoch)
             self.tb.add_scalar("Val loss", result["val_loss"], epoch)
             self.tb.add_scalar("Learning rate", result["learning_rate"], epoch)
+            print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy:result["train_acc"]')
             self._epoch_end_val(epoch + 1, result)
             self.history.append(result)
 
@@ -198,6 +200,7 @@ class BaseModel(ABC, nn.Module):
                 max_acc = result["val_acc"]
 
             if early_stopper.early_stop(result["val_loss"]):
+                print(f"Early stopping in epoch: {epoch}")
                 break
             else:
                 print("No early stopping!")
