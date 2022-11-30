@@ -51,4 +51,3 @@ class ImageStats:
                 all_stds[num][channel] = torch.std(data[:, channel, :, :]).item()
 
         return torch.mean(all_means, dim=0), torch.mean(all_stds, dim=0)
-

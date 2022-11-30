@@ -1,4 +1,4 @@
-from src.training.models.vgg19 import VGG19
+from src.training.models.vgg19 import VGG19Vanilla
 import os
 import pickle
 import yaml

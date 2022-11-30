@@ -1,4 +1,4 @@
-image_path: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data_2\training'
+image_path: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data'
 
 model_to_use: 'vgg19'
 
@@ -8,12 +8,11 @@ base_model:
         flip_degrees: 30
 
 vgg19:
-    epochs: 50
+    epochs: 100
     batch_size: 16
-    learning_rate: 0.1
-    train_backbone_params: False
-    train_test_split_ratio: 0.8
-    classifier_dropout_rate : 0.2
+    learning_rate: 0.0001
+    train_backbone_params: True
+    train_test_split_ratio: 0.9
     classifier_layer:
         - classifier_layer_1:
             - 25088
@@ -22,25 +21,27 @@ vgg19:
         - classifier_layer_2:
             - 4096
             - 1024
-            - 0  # Dropout rate
+            - 0.2  # Dropout rate
         - classifier_layer_3:
             - 1024
-            - 5
+            - 10
             - 0 # Dropout rate
 
-
 resnet:
-    epochs: 10
-    batch_size: 128
-    learning_rate: 0.1
-    train_backbone_params: False
+    epochs: 100
+    batch_size: 16
+    learning_rate: 0.001
+    train_backbone_params: True
     train_test_split_ratio: 0.8
-    classifier_dropout_rate : 0.2
     classifier_layer:
         - classifier_layer_1:
             - 512
-            - 5
-            - 0 # Dropout rate
+            - 256
+            - 0.2 # Dropout rate
+        - classifier_layer_2:
+            - 256
+            - 10
+            - 0
 
 custom1:
     epochs: 10

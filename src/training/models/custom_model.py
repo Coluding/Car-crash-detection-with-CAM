@@ -18,6 +18,8 @@ class CustomModel1(BaseModel):
         self._init_transforms()
         self._set_up_model()
         self._load_images()
+        for name, param in self.named_parameters():
+            print(name, param.grad)
 
     def _init_transforms(self):
         image_stats = ImageStats()
@@ -35,23 +37,23 @@ class CustomModel1(BaseModel):
         if not new_model:
             self.model = torch.load("saved_models/custom1.model")
         else:
-            self.model = nn.Sequential(#nn.Conv2d(3,64, (3,3)),
-                                  #nn.ReLU(),
-                                  #nn.Conv2d(64,64, (3,3)),
-                                  #nn.ReLU(),
-                                  #nn.MaxPool2d((2,2)),
-                                  #nn.BatchNorm2d(64),
-                                  #nn.Conv2d(64,32,(3,3)),
-                                  #nn.ReLU(),
-                                  #nn.Conv2d(32,32,(3,3)),
-                                  #nn.ReLU(),
-                                  #nn.MaxPool2d((2,2)),
-                                  #nn.BatchNorm2d(32),
-                                  #nn.Conv2d(32,16,(3,3)),
-                                  #nn.ReLU(),
-                                  #nn.Conv2d(16,16, (3,3)),
-                                  #nn.ReLU(),
-                                  #nn.MaxPool2d((4,4)),
+            self.model = nn.Sequential(nn.Conv2d(3,64, (3,3)),
+                                  nn.ReLU(),
+                                  nn.Conv2d(64,64, (3,3)),
+                                  nn.ReLU(),
+                                  nn.MaxPool2d((2,2)),
+                                  nn.BatchNorm2d(64),
+                                  nn.Conv2d(64,32,(3,3)),
+                                  nn.ReLU(),
+                                  nn.Conv2d(32,32,(3,3)),
+                                  nn.ReLU(),
+                                  nn.MaxPool2d((2,2)),
+                                  nn.BatchNorm2d(32),
+                                  nn.Conv2d(32,16,(3,3)),
+                                  nn.ReLU(),
+                                  nn.Conv2d(16,16, (3,3)),
+                                  nn.ReLU(),
+                                  nn.MaxPool2d((4,4)),
                                   nn.Flatten())
 
 

@@ -12,7 +12,8 @@ from PIL import Image
 import torchinfo
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
-from utils import EarlyStopper
+from src.training.models.utils import  EarlyStopper, ImageStats
+import os
 
 
 class BaseModel(ABC, nn.Module):
@@ -63,8 +64,9 @@ class BaseModel(ABC, nn.Module):
                 layer_dict[f"layer_{index}_dropoutRrate"] = dropout_rate
 
             if index != len(config_list_of_layers):
-                final_layer_list.append(nn.ReLU())
+                final_layer_list.append(nn.ELU())
 
+        final_layer_list.append(nn.LogSoftmax(dim=1))
         return final_layer_list, layer_dict
 
 
@@ -73,23 +75,18 @@ class BaseModel(ABC, nn.Module):
         _, preds = torch.max(output, dim=1)
         return torch.tensor(torch.sum(preds == labels) / len(preds))
 
-    def evaluate(self):
+    def evaluate(self, val_loader):
         with torch.no_grad():
             self.eval()
-            outputs = [self.validation_step(batch) for batch in self.val_loader]
+            outputs = [self.validation_step(batch) for batch in val_loader]
             return self.validation_epoch_end(outputs)
 
     def _load_images(self):
-        path = self._config_file["image_path"]
-        trfs = tt.Compose([tt.RandomVerticalFlip(),
-                           tt.RandomHorizontalFlip(),
-                           tt.RandomRotation(degrees=30),
-                           #tt.RandomCrop(size=190),
-                           self.transforms])
-        images = ImageFolder(path, transform=trfs)
+        trfs = tt.Compose([self.transforms])
+        images = ImageFolder(self._config_file["image_path"], transform=trfs)
         self.classes = images.classes
         # more augmenting !!
-        split_ratio = 0.8
+        split_ratio = self._specific_config_file["train_test_split_ratio"]
         train_images, test_images = random_split(images, [round(split_ratio * len(images)),
                                                           round((1 - split_ratio) * len(images))])
 
@@ -103,6 +100,20 @@ class BaseModel(ABC, nn.Module):
 
     def print_summary(self, input_size):
         print(torchinfo.summary(self.model, input_size=input_size))
+
+    def _get_class_weights(self):
+        image_number_sum = 0
+        total_image_numbers = []
+        path = self._config_file["image_path"]
+        for image_class in os.listdir(path):
+            number_images = len(os.listdir(os.path.join(path, image_class)))
+            image_number_sum += number_images
+            total_image_numbers.append(number_images)
+
+        total_image_numbers = torch.tensor(total_image_numbers, requires_grad=False)
+        class_weights = total_image_numbers / image_number_sum
+
+        return class_weights
 
     @abstractmethod
     def _init_backbone_model(self, new_model=True):
@@ -121,12 +132,18 @@ class BaseModel(ABC, nn.Module):
         out = self.model(xb)
         return out
 
-    def training_step(self, batch):
+    def training_step(self, batch, use_class_weights=True):
         images, labels = batch
         out = self(images)
-        loss = F.cross_entropy(out, labels)
+        if use_class_weights:
+            weights = self._get_class_weights()
+            loss = F.nll_loss(out, labels, weight=weights)
+        else:
+            loss = F.F.nll_loss(out, labels)
         #loss = nn.NLLLoss(out, labels)
         acc = self.accuracy(out, labels)
+        print(f"train step loss: {loss}")
+
         return loss, acc
 
     def validation_step(self, batch):
@@ -135,6 +152,7 @@ class BaseModel(ABC, nn.Module):
         out = self(images)
         loss = F.cross_entropy(out, labels)
         accuracy = self.accuracy(out, labels)
+        print(f"val step loss: {loss}")
         return {"val_loss": loss, "val_acc": accuracy}
 
     def validation_epoch_end(self, outputs):
@@ -148,10 +166,12 @@ class BaseModel(ABC, nn.Module):
         print(f"Epoch[{epoch}]: val_loss: {results['val_loss']}"
               f" val_acc: {results['val_acc']}")
 
-    def fit(self, optim=torch.optim.Adam, lrs=torch.optim.lr_scheduler.ReduceLROnPlateau, **kwargs):
+    def fit(self, optim=torch.optim.Adam, lrs=torch.optim.lr_scheduler.ReduceLROnPlateau, use_class_weights=True,
+            **kwargs):
         """
         Fits the model with specified hyperparams of the config file. If a learning rate scheduler is used, the **kwargs
         can be used to give the scheduler arguments
+        :param use_class_weights: True if class weights should be used for the loss function
         :param lrs: Pytorch learning rate scheduler
         :param optim: Pytorch optimizer
         :param kwargs: additional keyword arguments for the learning rate scheduler
@@ -159,7 +179,7 @@ class BaseModel(ABC, nn.Module):
         """
         optimizer = optim(self.parameters(), lr=self.learning_rate)
         lrs = lrs(optimizer, **kwargs)
-        early_stopper = EarlyStopper(patience=3, min_delta=0)
+        early_stopper = EarlyStopper(patience=10, min_delta=0.2)
         max_acc = 0
 
         for epoch in range(self.epochs):
@@ -167,19 +187,19 @@ class BaseModel(ABC, nn.Module):
             train_losses = []
             train_accs = []
             for batch_number, batch in enumerate(self.train_loader):
+                optimizer.zero_grad()
                 print(f"new batch: {batch_number}")
-                loss, train_acc = self.training_step(batch)
+                loss, train_acc = self.training_step(batch, use_class_weights)
                 loss.backward()
                 train_losses.append(loss)
                 train_accs.append(train_acc)
 
-                torch.nn.utils.clip_grad_norm(self.parameters(), 0.01)
                 optimizer.step()
-                optimizer.zero_grad()
+
 
             print(f"Epoch {epoch + 1} done!")
             print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
-            result = self.evaluate()
+            result = self.evaluate(self.val_loader)
 
             result["learning_rate"] = optimizer.param_groups[0]["lr"]
             result["train_loss"] = torch.stack(train_losses).mean().item()
@@ -190,10 +210,11 @@ class BaseModel(ABC, nn.Module):
             self.tb.add_scalar("Val accuracy", result["val_acc"], epoch)
             self.tb.add_scalar("Val loss", result["val_loss"], epoch)
             self.tb.add_scalar("Learning rate", result["learning_rate"], epoch)
-            print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy:result["train_acc"]')
+            print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy: {result["train_acc"]}')
             self._epoch_end_val(epoch + 1, result)
             self.history.append(result)
 
+            # TODO: Fix LRS with threshhold, factor and mode
             lrs.step(metrics=result["val_loss"])
 
             if max_acc < result["val_acc"]:

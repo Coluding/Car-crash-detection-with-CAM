@@ -7,8 +7,11 @@ import torch
 
 
 def main():
-    model = ResNetVanilla()
-    model.fit(patience=2)
+    model = VGG19Vanilla()
+    model.fit(patience=7, factor=0.5)
+    inp = input("Save?")
+    if inp == "yes":
+        model.save_model()
 
 
 if __name__ == "__main__":

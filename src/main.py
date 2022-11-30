@@ -1,9 +1,10 @@
-from src.training.models.vgg19 import VGG19
+from src.training.models.vgg19 import VGG19Vanilla
 from final_model import FinalModel
 import os
 from PIL import Image
 import torch
 import torch.nn.functional as F
+import pickle
 
 
 def main():
@@ -22,6 +23,9 @@ def main():
 
 if __name__ == "__main__":
     os.chdir("training/models")
-    m = FinalModel(VGG19().load_from_checkpoint(r"C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog\src\training\models\lightning_logs\version_1\checkpoints\epoch=1-step=20.ckpt"))
-    img = Image.open(r"C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog\data\Bumper Front\0082.JPEG")
-    print(F.softmax(m.predict_raw_image(img)))
+    with open("saved_models/vgg19.model", "rb") as m:
+        model = pickle.load(m)
+    #m = FinalModel(VGG19Vanilla().load_from_checkpoint(r"C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog\src\training\models\lightning_logs\version_1\checkpoints\epoch=1-step=20.ckpt"))
+    #img = Image.open(r"C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog\data\Bumper Front\0082.JPEG")
+    #print(F.softmax(m.predict_raw_image(img)))
+    print(model.train_loader)
