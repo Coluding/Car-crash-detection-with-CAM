@@ -4,6 +4,8 @@ from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 import yaml
 import torchvision.transforms as tt
+import os
+import shutil
 
 
 class EarlyStopper:
@@ -51,3 +53,37 @@ class ImageStats:
                 all_stds[num][channel] = torch.std(data[:, channel, :, :]).item()
 
         return torch.mean(all_means, dim=0), torch.mean(all_stds, dim=0)
+
+
+def create_train_and_test_dir(img_data_path, split_ratio, destination):
+    all_img_dict = {"train":{}, "test":{}}
+
+    for img_class in os.listdir(img_data_path):
+        length_folder = len(os.listdir(os.path.join(img_data_path, img_class)))
+        all_imgs = np.zeros(shape=(length_folder,), dtype="object")
+        for index, file in enumerate(os.listdir(os.path.join(img_data_path, img_class))):
+            all_imgs[index - 1] = (os.path.join(img_data_path,img_class, file))
+
+        split_num = int(np.round(split_ratio * length_folder, 0))
+        train_imgs = np.random.choice(all_imgs, split_num, replace=False)
+
+        set_of_test_img = set(all_imgs).difference(train_imgs)
+        test_imgs = (list(set_of_test_img))
+        all_img_dict["train"][img_class] = train_imgs
+        all_img_dict["test"][img_class] = test_imgs
+
+    for train_or_test in all_img_dict.keys():
+        if str(train_or_test) =="train":
+            label = "train"
+        else:
+            label = "test"
+        dest_path = os.path.join(destination, label)
+        for key in all_img_dict[label].keys():
+            class_name = str(key).replace(" ", "_")
+            if not os.path.exists(os.path.join(dest_path, class_name)):
+                print("creating")
+                os.makedirs(os.path.join(dest_path, class_name))
+            for path in all_img_dict[label][key]:
+                shutil.copyfile(path, os.path.join(dest_path, class_name, os.path.basename(path)))
+
+

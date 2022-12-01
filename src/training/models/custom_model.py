@@ -34,25 +34,26 @@ class CustomModel1(BaseModel):
         ])
 
     def _init_backbone_model(self, new_model=True):
+        activation_function = self._get_activation_function()
         if not new_model:
             self.model = torch.load("saved_models/custom1.model")
         else:
             self.model = nn.Sequential(nn.Conv2d(3,64, (3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.Conv2d(64,64, (3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.MaxPool2d((2,2)),
                                   nn.BatchNorm2d(64),
                                   nn.Conv2d(64,32,(3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.Conv2d(32,32,(3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.MaxPool2d((2,2)),
                                   nn.BatchNorm2d(32),
                                   nn.Conv2d(32,16,(3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.Conv2d(16,16, (3,3)),
-                                  nn.ReLU(),
+                                  activation_function,
                                   nn.MaxPool2d((4,4)),
                                   nn.Flatten())
 
