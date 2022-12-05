@@ -1,16 +1,7 @@
 import torch
-import torchinfo
-from torch.utils.data import DataLoader, random_split
-from torchvision.datasets import ImageFolder
 import torchvision.transforms as tt
-import torch.nn as nn
-import yaml
-import matplotlib.pyplot as plt
-import torch.nn.functional as F
 import torchvision
 import pickle
-import datetime
-import numpy as np
 import os
 from src.training.models.base_model import BaseModel
 from src.training.models.utils import ImageStats
@@ -70,18 +61,23 @@ class VGG19Vanilla(BaseModel):
         model.classifier = classifier
         self.model = model
 
-    def save_model(self):
-        if os.path.exists("saved_models/vgg/vgg19.model"):
-            with open("saved_models/vgg/vgg19.model", "wb") as f:
+    def save_model(self, name):
+        if os.path.exists(os.path.join("saved_models", self.name)):
+            with open(os.path.join("saved_models", self.name, self._specific_config_file["specific_modelName_to_use"],
+                                   "wb"))as f:
                 pickle.dump(self, f)
         else:
-            os.mkdir("saved_models/vgg")
-            with open("saved_models/vgg/vgg19.model", "wb") as f:
+            os.mkdir("saved_models/vgg19")
+            with open(os.path.join("saved_models", self.name, self._specific_config_file["specific_modelName_to_use"],
+                                   "wb")) as f:
                 pickle.dump(self, f)
+
+    def save_model_intermediate_state(self):
+        pass
 
 
 def main():
-    with open("saved_models/vgg19.model", "rb") as m:
+    with open("saved_models/vgg19/vgg19.model", "rb") as m:
         model = pickle.load(m)
 
     test_data = next(iter(model.val_loader))[0]
@@ -90,6 +86,7 @@ def main():
     print(torch.max(pred, dim=1)[1])
     print(test_target)
     print(model.accuracy(pred, test_target))
+
 
 if __name__ == "__main__":
     main()

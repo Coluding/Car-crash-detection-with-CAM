@@ -56,7 +56,7 @@ class ImageStats:
 
 
 def create_train_and_test_dir(img_data_path, split_ratio, destination):
-    all_img_dict = {"train":{}, "test":{}}
+    all_img_dict = {"train": {}, "test": {}}
 
     for img_class in os.listdir(img_data_path):
         length_folder = len(os.listdir(os.path.join(img_data_path, img_class)))
@@ -81,7 +81,6 @@ def create_train_and_test_dir(img_data_path, split_ratio, destination):
         for key in all_img_dict[label].keys():
             class_name = str(key).replace(" ", "_")
             if not os.path.exists(os.path.join(dest_path, class_name)):
-                print("creating")
                 os.makedirs(os.path.join(dest_path, class_name))
             for path in all_img_dict[label][key]:
                 shutil.copyfile(path, os.path.join(dest_path, class_name, os.path.basename(path)))

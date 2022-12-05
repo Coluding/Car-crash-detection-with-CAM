@@ -1,18 +1,14 @@
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
-import torchvision.transforms as tt
 import torch.nn as nn
 import yaml
 import torch.nn.functional as F
-import torchvision
-import pickle
 import datetime
-from PIL import Image
 import torchinfo
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
-from src.training.models.utils import EarlyStopper, ImageStats
+from src.training.models.utils import EarlyStopper, create_train_and_test_dir
 import os
 
 
@@ -22,12 +18,15 @@ class BaseModel(ABC, nn.Module):
         with open("../../config.yml") as y:
             self._config_file = yaml.safe_load(y)
 
+        if self._config_file["create_train_test_dir"]["create_new_dirs"]:
+            self.preprocess_images()
+
         self.today = datetime.datetime.today().strftime("Y-m-d")
-        self.tb = SummaryWriter()
         self._specific_config_file = None
         self.train_transforms = None
         self.val_transforms = None
         self.model = None
+        self.name = None
         self.classes = None
         self.train_loader = None
         self.val_loader = None
@@ -53,6 +52,14 @@ class BaseModel(ABC, nn.Module):
     @abstractmethod
     def save_model(self):
         pass
+
+    @abstractmethod
+    def save_model_intermediate_state(self):
+        pass
+
+    def preprocess_images(self):
+        create_train_and_test_dir(img_data_path=self._config_file["create_train_test_dir"]["source_path"],
+                                  destination=self._config_file["create_train_test_dir"]["destination_path"])
 
     def _set_up_model(self):
         """
@@ -154,7 +161,7 @@ class BaseModel(ABC, nn.Module):
     def _get_class_weights(self):
         image_number_sum = 0
         total_image_numbers = []
-        path = self._config_file["image_path"]
+        path = os.path.join(self._config_file["image_path"], "train")
         for image_class in os.listdir(path):
             number_images = len(os.listdir(os.path.join(path, image_class)))
             image_number_sum += number_images
@@ -162,6 +169,7 @@ class BaseModel(ABC, nn.Module):
 
         total_image_numbers = torch.tensor(total_image_numbers, requires_grad=False)
         class_weights = total_image_numbers / image_number_sum
+        class_weights = 1 / class_weights
 
         return class_weights
 
@@ -178,7 +186,9 @@ class BaseModel(ABC, nn.Module):
         else:
             loss = F.F.nll_loss(out, labels)
         acc = self.accuracy(out, labels)
-        print(f"train step loss: {loss}")
+        print(f"Train step loss: {loss}")
+        print(f"Train predictions: {torch.max(out, dim=1)[1]}")
+        print(f"True targets: {labels}")
 
         return loss, acc
 
@@ -225,6 +235,7 @@ class BaseModel(ABC, nn.Module):
         :param kwargs: additional keyword arguments for the learning rate scheduler
         :return: None
         """
+        tb = SummaryWriter(comment=self.name, filename_suffix=self.name)
         early_stopping = self._specific_config_file["early_stopping"]
         optimizer = optim(self.parameters(), lr=self.learning_rate)
         lrs = lrs(optimizer, **kwargs)
@@ -257,11 +268,11 @@ class BaseModel(ABC, nn.Module):
             result["train_loss"] = torch.stack(train_losses).mean().item()
             result["train_acc"] = torch.stack(train_accs).mean().item()
 
-            self.tb.add_scalar("Train loss", result["train_loss"], epoch)
-            self.tb.add_scalar("Train accuracy", result["train_acc"], epoch)
-            self.tb.add_scalar("Val accuracy", result["val_acc"], epoch)
-            self.tb.add_scalar("Val loss", result["val_loss"], epoch)
-            self.tb.add_scalar("Learning rate", result["learning_rate"], epoch)
+            tb.add_scalar("Train loss", result["train_loss"], epoch)
+            tb.add_scalar("Train accuracy", result["train_acc"], epoch)
+            tb.add_scalar("Val accuracy", result["val_acc"], epoch)
+            tb.add_scalar("Val loss", result["val_loss"], epoch)
+            tb.add_scalar("Learning rate", result["learning_rate"], epoch)
             print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy: {result["train_acc"]}')
             self._epoch_end_val(epoch + 1, result)
             self.history.append(result)
@@ -283,8 +294,13 @@ class BaseModel(ABC, nn.Module):
                 else:
                     print("No early stopping!")
 
-        self.tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_acc})
-        self.tb.close()
+        tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_acc})
+        tb.close()
+
+    def predict(self, images):
+        out = self(images)
+        prediction = torch.max(out, dim=1)[1]
+        return prediction
 
     def print_summary(self, input_size):
         print(torchinfo.summary(self.model, input_size=input_size))

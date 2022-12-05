@@ -1,12 +1,10 @@
 import torch
-import torchinfo
-import torchvision
 import pickle
 import os
 from src.training.models.base_model import BaseModel
 import torch.nn as nn
 import torchvision.transforms as tt
-from utils import ImageStats
+from src.training.models.utils import ImageStats
 
 
 class CustomModel1(BaseModel):
