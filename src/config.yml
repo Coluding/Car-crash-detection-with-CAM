@@ -1,11 +1,11 @@
 #TODO tackle class imbalance
 
 create_train_test_dir :
-    create_new_dirs : True
+    create_new_dirs : False
     source_path : 'D:\ML\DL\projects\insurance_image_recog\data'
     destination_path : 'D:\ML\DL\projects\insurance_image_recog\data\data_split'
 
-image_path: 'D:\ML\DL\projects\insurance_image_recog\data2\data_split'
+image_path: 'D:\ML\DL\projects\insurance_image_recog\data\data_split'
 model_to_use: 'vgg19'
 specific_modelName_to_use: 'vgg19'
 
@@ -16,7 +16,7 @@ base_model:
         flip_degrees: 30
 
 vgg19:
-    epochs: 1
+    epochs: 50
     batch_size: 16
     learning_rate: 0.0001
     train_backbone_params: True
@@ -26,7 +26,7 @@ vgg19:
     classifier_layer:
         - classifier_layer_1:
             - 25088
-            - 6
+            - 10
             - 0 # Dropout rate
 
 resnet:

@@ -18,9 +18,6 @@ class BaseModel(ABC, nn.Module):
         with open("../../config.yml") as y:
             self._config_file = yaml.safe_load(y)
 
-        if self._config_file["create_train_test_dir"]["create_new_dirs"]:
-            self.preprocess_images()
-
         self.today = datetime.datetime.today().strftime("Y-m-d")
         self._specific_config_file = None
         self.train_transforms = None
@@ -59,7 +56,8 @@ class BaseModel(ABC, nn.Module):
 
     def preprocess_images(self):
         create_train_and_test_dir(img_data_path=self._config_file["create_train_test_dir"]["source_path"],
-                                  destination=self._config_file["create_train_test_dir"]["destination_path"])
+                                  destination=self._config_file["create_train_test_dir"]["destination_path"],
+                                  split_ratio=self._specific_config_file["train_test_split_ratio"])
 
     def _set_up_model(self):
         """

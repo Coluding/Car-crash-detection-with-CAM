@@ -11,6 +11,10 @@ class VGG19Vanilla(BaseModel):
     def __init__(self):
         super().__init__()
         self._specific_config_file = self._config_file["vgg19"]
+
+        if self._config_file["create_train_test_dir"]["create_new_dirs"]:
+            self.preprocess_images()
+
         self.name = "vgg19"
         self._collect_hyperparams()
         self._init_transforms()
