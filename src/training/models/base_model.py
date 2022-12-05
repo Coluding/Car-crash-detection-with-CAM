@@ -183,10 +183,24 @@ class BaseModel(ABC, nn.Module):
             loss = F.nll_loss(out, labels, weight=weights)
         else:
             loss = F.F.nll_loss(out, labels)
+
         acc = self.accuracy(out, labels)
-        print(f"Train step loss: {loss}")
-        print(f"Train predictions: {torch.max(out, dim=1)[1]}")
-        print(f"True targets: {labels}")
+
+        if self._specific_config_file["train_verbosity"]["loss"]:
+            print(f"Train step loss: {loss}")
+
+        if self._specific_config_file["train_verbosity"]["prediction_probabilities"]:
+            out_probs = F.softmax(out, dim=1)
+            print(f"Train prediction probabilities: {torch.max(out_probs, dim=1)[0]}")
+
+        if self._specific_config_file["train_verbosity"]["prediction"]:
+            print(f"Train predictions: {torch.max(out, dim=1)[1]}")
+
+        if self._specific_config_file["train_verbosity"]["true_labels"]:
+            print(f"True targets: {labels}")
+
+        if self._specific_config_file["train_verbosity"]["prediction"]:
+            print(f"Train accuracy: {acc}")
 
         return loss, acc
 
@@ -196,9 +210,23 @@ class BaseModel(ABC, nn.Module):
         out = self(images)
         loss = F.cross_entropy(out, labels)
         accuracy = self.accuracy(out, labels)
-        print(f"val step loss: {loss}")
-        print(f"Validation predictions: {torch.max(out, dim=1)[1]}")
-        print(f"True targets: {labels}")
+
+        if self._specific_config_file["validation_verbosity"]["loss"]:
+            print(f"val step loss: {loss}")
+
+        if self._specific_config_file["validation_verbosity"]["prediction"]:
+            out_probs = F.softmax(out, dim=1)
+            print(f"Validation prediction probabilities: {torch.max(out_probs, dim=1)[0]}")
+
+        if self._specific_config_file["validation_verbosity"]["prediction_probabilities"]:
+            print(f"Validation predictions: {torch.max(out, dim=1)[1]}")
+
+        if self._specific_config_file["validation_verbosity"]["true_labels"]:
+            print(f"Validation true labels: {labels}")
+
+        if self._specific_config_file["validation_verbosity"]["prediction"]:
+            print(f"Validation accuracy: {accuracy}")
+
         return {"val_loss": loss, "val_acc": accuracy}
 
     def validation_epoch_end(self, outputs):

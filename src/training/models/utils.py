@@ -27,19 +27,17 @@ class EarlyStopper:
 
 
 class ImageStats:
-    def __init__(self):
+    def __init__(self, image_path):
+        self._image_path = image_path
         self.image_data = None
         self._load_images()
 
     def _load_images(self):
-        with open("../../config.yml") as y:
-            config = yaml.safe_load(y)
 
         transforms = tt.Compose([tt.Resize((200, 200)),
                                  tt.ToTensor()])
 
-        path_to_data = config["image_path"]
-        images = ImageFolder(path_to_data, transforms)
+        images = ImageFolder(self._image_path, transforms)
 
         self.image_data = DataLoader(images, batch_size=16)
 
@@ -57,6 +55,10 @@ class ImageStats:
 
 def create_train_and_test_dir(img_data_path, split_ratio, destination):
     all_img_dict = {"train": {}, "test": {}}
+
+    if os.path.exists(destination):
+        print("removed old folder")
+        shutil.rmtree(destination)
 
     for img_class in os.listdir(img_data_path):
         length_folder = len(os.listdir(os.path.join(img_data_path, img_class)))

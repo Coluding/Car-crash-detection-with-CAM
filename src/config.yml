@@ -1,7 +1,7 @@
 #TODO tackle class imbalance
 
 create_train_test_dir :
-    create_new_dirs : False
+    create_new_dirs : False # Create new train and test dirs based on a random split defined in the model configuration below
     source_path : 'D:\ML\DL\projects\insurance_image_recog\data'
     destination_path : 'D:\ML\DL\projects\insurance_image_recog\data\data_split'
 
@@ -16,6 +16,20 @@ base_model:
         flip_degrees: 30
 
 vgg19:
+    train_verbosity: # what to print during training
+        loss: True
+        prediction: True
+        prediction_probabilities: True
+        true_labels: True
+        accuracy: True
+
+    validation_verbosity: # what to print during validation
+        loss: True
+        prediction: True
+        prediction_probabilities: True
+        true_labels: True
+        accuracy: True
+
     epochs: 50
     batch_size: 16
     learning_rate: 0.0001
@@ -30,6 +44,18 @@ vgg19:
             - 0 # Dropout rate
 
 resnet:
+    train_verbosity: # what to print during training
+        loss: True
+        predictions: True
+        prediction_probabilities: True
+        true_labels: True
+
+    validation_verbosity: # what to print during validation
+            loss: True
+            predictions: True
+            prediction_probabilities: True
+            true_labels: True
+
     epochs: 100
     batch_size: 16
     learning_rate: 0.001
