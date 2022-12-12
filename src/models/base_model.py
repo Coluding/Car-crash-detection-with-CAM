@@ -151,7 +151,7 @@ class BaseModel(ABC, nn.Module):
                 final_layer_list.append(dropout_layer)
                 layer_dict[f"layer_{index}_dropoutRate"] = dropout_rate
 
-            if index != len(config_list_of_layers):
+            if index + 1 != len(config_list_of_layers):
                 final_layer_list.append(activation_function)
 
         final_layer_list.append(nn.LogSoftmax(dim=1))
@@ -240,7 +240,7 @@ class BaseModel(ABC, nn.Module):
         out = self(images)
         if use_class_weights:
             weights = self._get_class_weights()
-            loss = F.nll_loss(out, labels, weight=weights)
+            loss = F.nll_loss(out, labels, weight=weights) # TODO: Maybe Focal Loss
         else:
             loss = F.nll_loss(out, labels)
 
@@ -399,6 +399,7 @@ class BaseModel(ABC, nn.Module):
                 if epoch % save_every_n_epoch == 0 and epoch != 0:
                     self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
+        # Add current hyperparams to tensorboard logger
         tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_val_acc})
         tb.close()
 
