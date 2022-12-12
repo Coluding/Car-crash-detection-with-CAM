@@ -1,14 +1,15 @@
-import os
 import pickle
-from src.training.models.utils import *
+import yaml
+from src.models.utils import *
 
 
 class FinalModel:
     def __init__(self):
-        with open(r"..\..\config.yml") as f:
+        with open(r"../config.yml") as f:
             self._config = yaml.safe_load(f)
 
-        path = fr"./saved_models/{self._config['model_to_use']}/{self._config['model_to_use']}.model"
+        #path = fr"./saved_models/{self._config['model_to_use']}/{self._config['model_to_use']}.model"
+        path = self._config["specific_modelName_to_use"]
         with open(path, "rb") as f:
             self.model = pickle.load(f)
 

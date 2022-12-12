@@ -1,17 +1,13 @@
 import os
-
-from src.training.models import FinalModel
-from src.training.models import vgg19
-from src.training.models import resnet
-from src.training.models import custom_model
+from src.models import FinalModel
+from src.models import custom_model, resnet, vgg19
 import sys
 
 
 def main():
-    os.chdir("./training/models")
-    sys.modules["vgg19"] = vgg19
-    sys.modules["resnet"] = resnet
-    sys.modules["custom_model"] = custom_model
+    sys.path.append(os.path.join(os.path.dirname(__file__), "models"))
+    print(os.path.dirname(__file__), "models")
+    os.chdir("models")
     m = FinalModel()
     print(m.model.history)
 

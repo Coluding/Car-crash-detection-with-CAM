@@ -1,10 +1,10 @@
 import torch
 import pickle
 import os
-from src.training.models.base_model import BaseModel
+from src.models.base_model import BaseModel
 import torch.nn as nn
 import torchvision.transforms as tt
-from src.training.models.utils import ImageStats
+from src.models.utils import ImageStats
 
 
 class CustomModel1(BaseModel):
@@ -37,23 +37,23 @@ class CustomModel1(BaseModel):
             self.model = torch.load("saved_models/custom1.model")
         else:
             self.model = nn.Sequential(nn.Conv2d(3,64, (3,3)),
-                                  activation_function,
-                                  nn.Conv2d(64,64, (3,3)),
-                                  activation_function,
-                                  nn.MaxPool2d((2,2)),
-                                  nn.BatchNorm2d(64),
-                                  nn.Conv2d(64,32,(3,3)),
-                                  activation_function,
-                                  nn.Conv2d(32,32,(3,3)),
-                                  activation_function,
-                                  nn.MaxPool2d((2,2)),
-                                  nn.BatchNorm2d(32),
-                                  nn.Conv2d(32,16,(3,3)),
-                                  activation_function,
-                                  nn.Conv2d(16,16, (3,3)),
-                                  activation_function,
-                                  nn.MaxPool2d((4,4)),
-                                  nn.Flatten())
+                                       activation_function,
+                                       nn.Conv2d(64,64, (3,3)),
+                                       activation_function,
+                                       nn.MaxPool2d((2,2)),
+                                       nn.BatchNorm2d(64),
+                                       nn.Conv2d(64,32,(3,3)),
+                                       activation_function,
+                                       nn.Conv2d(32,32,(3,3)),
+                                       activation_function,
+                                       nn.MaxPool2d((2,2)),
+                                       nn.BatchNorm2d(32),
+                                       nn.Conv2d(32,16,(3,3)),
+                                       activation_function,
+                                       nn.Conv2d(16,16, (3,3)),
+                                       activation_function,
+                                       nn.MaxPool2d((4,4)),
+                                       nn.Flatten())
 
 
     def _add_classifier(self):

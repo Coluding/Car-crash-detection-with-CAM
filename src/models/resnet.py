@@ -2,8 +2,8 @@ import torch
 import torchvision
 import pickle
 import os
-from src.training.models.base_model import BaseModel
-from src.training.models.utils import ImageStats
+from src.models.base_model import BaseModel
+from src.models.utils import ImageStats
 import torchvision.transforms as tt
 
 

@@ -2,7 +2,6 @@ import numpy as np
 import torch
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
-import yaml
 import torchvision.transforms as tt
 import os
 import shutil
@@ -75,7 +74,7 @@ def create_train_and_test_dir(img_data_path, split_ratio, destination):
         all_img_dict["test"][img_class] = test_imgs
 
     for train_or_test in all_img_dict.keys():
-        if str(train_or_test) =="train":
+        if str(train_or_test) == "train":
             label = "train"
         else:
             label = "test"

@@ -1,26 +1,38 @@
 import io
 import os
 import sys
-from fastapi import FastAPI, Response, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, HTTPException, status, File, UploadFile
 from PIL import Image
-from src.training.models import FinalModel
-from src.training.models import vgg19
-from src.training.models import resnet
-from src.training.models import custom_model
+from src.models import FinalModel
+from src.models import custom_model, resnet, vgg19
 
-os.chdir("src/training/models")
-sys.modules["vgg19"] = vgg19
-sys.modules["resnet"] = resnet
-sys.modules["custom_model"] = custom_model
+
+dir_name = os.path.basename(os.path.normpath(os.getcwd()))
+print(dir_name)
+print(".............................................")
+print(os.getcwd())
+
+if dir_name == "src":
+    rel_path = "models"
+else:
+    rel_path = "src/models"
+
+
+module_path = os.path.abspath(rel_path)
+sys.path.append(module_path)
+print(sys.path)
+
+
+os.chdir(rel_path)
 model = FinalModel()
 
 app = FastAPI()
+
 
 @app.post("/predict", status_code=status.HTTP_201_CREATED)
 def predict(file: UploadFile = File(...)):
     try:
         image_bytes = file.file.read()
-        print(type(image_bytes))
         image = Image.open(io.BytesIO(image_bytes))
         out = model.predict_raw_image(image)
 

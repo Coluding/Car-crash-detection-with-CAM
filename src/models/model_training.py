@@ -1,15 +1,12 @@
-import datetime
-
 from vgg19 import VGG19Vanilla
 
 
 def main():
     model = VGG19Vanilla()
-    model.fit(patience=7, factor=0.1)
-    today = datetime.datetime.today().strftime(fmt="%d%m%y")
+    model.fit(save_every_n_epoch=10, patience=3, factor=0.1)
     inp = input("Save?")
     if inp == "yes":
-        model.save_model(today)
+        model.save_model()
 
 
 if __name__ == "__main__":
