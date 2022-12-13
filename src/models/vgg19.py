@@ -31,7 +31,7 @@ class VGG19Vanilla(BaseModel):
         image_stats_train = ImageStats(os.path.join(
             self._config_file["create_train_test_dir"]["destination_path"], "train"))
         stats = image_stats_train.compute_stats() # Normalize image data with train data stats, so the algorihm gets no
-        # information about the validation data set
+        # information about the test data set
 
         self.train_transforms = tt.Compose([
             tt.Resize((256,256)),

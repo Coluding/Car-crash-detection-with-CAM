@@ -29,6 +29,10 @@ class BaseModel(ABC, nn.Module):
         self.train_loader = None
         self.val_loader = None
         self.history = []
+        # TODO: Make GPU use possible
+        # TODO: Include Optuna
+        # TODO: Research Azure (train, deployment)
+        # TODO: integrate mlflow
 
     def __str__(self):
         return self.model.__str__()
@@ -159,9 +163,9 @@ class BaseModel(ABC, nn.Module):
 
     def evaluate(self):
         """
-        Evaluates the validation results of the epochs to an epoch end result
+        Evaluates the test results of the epochs to an epoch end result
 
-        :return: epoch end validation loss and accuracy
+        :return: epoch end test loss and accuracy
         :rtype: dict
         """
         with torch.no_grad():
@@ -226,7 +230,7 @@ class BaseModel(ABC, nn.Module):
 
     def training_step(self, batch, use_class_weights=True):
         """
-        Training step which computes the loss and accuracy of a training batch
+        Training step which computes the loss and accuracy of a train batch
 
         :param batch: batch of pytorch dataloader
         :type batch: torch.utils.data.DataLoader
@@ -240,11 +244,12 @@ class BaseModel(ABC, nn.Module):
         out = self(images)
         if use_class_weights:
             weights = self._get_class_weights()
-            loss = F.nll_loss(out, labels, weight=weights) # TODO: Maybe Focal Loss
+            loss = F.nll_loss(out, labels, weight=weights)
+            # TODO: Maybe Focal Loss (class 3 is predicted with very high probabilities even when wrong)
         else:
             loss = F.nll_loss(out, labels)
 
-        acc = self.accuracy(out, labels)
+        acc = self.accuracy(out, labels) # TODO: F1 Score
 
         if self._config_file["train_verbosity"]["loss"]:
             print(f"Train step loss: {loss}")
@@ -264,7 +269,7 @@ class BaseModel(ABC, nn.Module):
 
     def validation_step(self, batch):
         """
-        Validation step which computes the loss and accuracy of a validation batch
+        Validation step which computes the loss and accuracy of a test batch
 
         :param batch: batch of pytorch dataloader
         :type batch: torch.utils.data.DataLoader
@@ -297,9 +302,9 @@ class BaseModel(ABC, nn.Module):
 
     def validation_epoch_end(self, outputs):
         """
-        Returns the epoch losses after computing the mean loss and accuracy of the validation batches
+        Returns the epoch losses after computing the mean loss and accuracy of the test batches
 
-        :param outputs: List of validation step outputs
+        :param outputs: List of test step outputs
         :type outputs: list
         :return: epoch loss and epoch accuracy
         :rtype: dict
@@ -312,7 +317,7 @@ class BaseModel(ABC, nn.Module):
 
     def _epoch_end_val(self, epoch, results):
         """
-        Prints validation epoch summary after every epoch
+        Prints test epoch summary after every epoch
 
         :param epoch: epoch number
         :type epoch: int
@@ -343,10 +348,10 @@ class BaseModel(ABC, nn.Module):
         if early_stopping:
             early_stopper = EarlyStopper(patience=10, min_delta=0.3)
 
-        max_val_acc = 0
+        max_val_acc = 0 # save max test accuracy
 
         for epoch in range(self.epochs):
-            self.train() # Activate training mode, so that dropout and batch norm layers are used
+            self.train() # Activate train mode, so that dropout and batch norm layers are used
             train_losses = []
             train_accs = []
             for batch_number, batch in enumerate(self.train_loader):
@@ -377,7 +382,6 @@ class BaseModel(ABC, nn.Module):
             self._epoch_end_val(epoch + 1, result)
             self.history.append(result)
 
-            # TODO: Fix LRS with threshhold, factor and mode
             # The learning rate is reduced when the val loss is on a plateau, meaning it does not make significant
             # changes --> local minima
             lrs.step(metrics=result["val_loss"])
@@ -399,9 +403,10 @@ class BaseModel(ABC, nn.Module):
                 if epoch % save_every_n_epoch == 0 and epoch != 0:
                     self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
-        # Add current hyperparams to tensorboard logger
-        tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_val_acc})
-        tb.close()
+            # Add current hyperparams to tensorboard logger
+            tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_val_acc})
+            tb.close()
+
 
     def predict(self, images):
         out = self(images)
@@ -418,7 +423,7 @@ class BaseModel(ABC, nn.Module):
             with open(os.path.join("saved_models", self.name, name + ".model"), "wb")as f:
                 pickle.dump(self, f)
         else:
-            os.mkdir(os.path.join("saved_models", self.name))
+            os.makedirs(os.path.join("saved_models", self.name))
             with open(os.path.join("saved_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
 
@@ -427,13 +432,13 @@ class BaseModel(ABC, nn.Module):
             name = self.today
 
         if epoch is None:
-            raise ValueError("Please give epoch as argument to intermediate save function in the training method!")
+            raise ValueError("Please give epoch as argument to intermediate save function in the train method!")
 
         if os.path.exists(os.path.join("saved_models", self.name)):
             with open(os.path.join("saved_models", self.name, name + f"epoch_num{epoch}" + ".model"), "wb")as f:
                 pickle.dump(self, f)
         else:
-            os.mkdir(os.path.join("saved_models", self.name))
+            os.makedirs(os.path.join("saved_models", self.name))
             with open(os.path.join("saved_models", self.name, name + f"epoch_num{epoch}" + ".model"), "wb")  as f:
                 pickle.dump(self, f)
 

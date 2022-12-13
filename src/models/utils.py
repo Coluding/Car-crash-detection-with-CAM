@@ -25,6 +25,10 @@ class EarlyStopper:
         return False
 
 
+def multiclass_focal_loss(inputs, targets, alpha: float = 0.25, gamma: float = 2):
+    pass
+
+
 class ImageStats:
     def __init__(self, image_path):
         self._image_path = image_path
@@ -32,6 +36,10 @@ class ImageStats:
         self._load_images()
 
     def _load_images(self):
+        """
+        Loads images in DataLoader
+        :return:
+        """
 
         transforms = tt.Compose([tt.Resize((200, 200)),
                                  tt.ToTensor()])
@@ -41,6 +49,11 @@ class ImageStats:
         self.image_data = DataLoader(images, batch_size=16)
 
     def compute_stats(self):
+        """
+        Computes mean and std over all images
+        :return: Mean and std of images
+        :rtype: tuple
+        """
         all_means = torch.zeros((len(self.image_data), 3))
         all_stds = torch.zeros((len(self.image_data), 3))
         for num, batch in enumerate(self.image_data):

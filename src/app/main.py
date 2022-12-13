@@ -8,9 +8,6 @@ from src.models import custom_model, resnet, vgg19
 
 
 dir_name = os.path.basename(os.path.normpath(os.getcwd()))
-print(dir_name)
-print(".............................................")
-print(os.getcwd())
 
 if dir_name == "src":
     rel_path = "models"
