@@ -8,9 +8,10 @@ import datetime
 import torchinfo
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
-from src.models.utils import EarlyStopper, create_train_and_test_dir
+from src.models.utils import EarlyStopper, create_train_and_test_dir, get_default_device, DeviceDataLoader, to_device
 import os
 import pickle
+import mlflow
 
 
 class BaseModel(ABC, nn.Module):
@@ -19,6 +20,7 @@ class BaseModel(ABC, nn.Module):
         with open("../config.yml") as y:
             self._config_file = yaml.safe_load(y)
 
+        self.device = get_default_device()
         self.today = datetime.datetime.today().strftime("%d%m%y")
         self._specific_config_file = None
         self.train_transforms = None
@@ -33,6 +35,7 @@ class BaseModel(ABC, nn.Module):
         # TODO: Include Optuna
         # TODO: Research Azure (train, deployment)
         # TODO: integrate mlflow
+        # TODO: save model with ONNX
 
     def __str__(self):
         return self.model.__str__()
@@ -46,9 +49,9 @@ class BaseModel(ABC, nn.Module):
         Computes the accuracy of a prediction
 
         :param output: Prediction outputs
-        :rtype output: torch.tensor
+        :type output: torch.tensor
         :param labels: True labels for the output
-        :rtype labels: torch.tensor
+        :type labels: torch.tensor
         :return: accuracy of the prediction
         :rtype: torch.tensor
         """
@@ -86,6 +89,7 @@ class BaseModel(ABC, nn.Module):
         """
         self._init_backbone_model()
         self._add_classifier()
+        to_device(self.model, device=self.device)
 
     def _collect_hyperparams(self):
         """
@@ -133,7 +137,7 @@ class BaseModel(ABC, nn.Module):
         Creates the final layer based on the input of the config file
 
         :param config_list_of_layers: List of the layer names and size in the config file
-        :rtype config_list_of_layers: list
+        :type config_list_of_layers: list
         :return: list of the to pytorch layer converted layers
         :rtype: list
         """
@@ -153,7 +157,7 @@ class BaseModel(ABC, nn.Module):
             if dropout_rate != 0:
                 dropout_layer = nn.Dropout(dropout_rate)
                 final_layer_list.append(dropout_layer)
-                layer_dict[f"layer_{index}_dropoutRate"] = dropout_rate
+                layer_dict[f"layer_{index}_dropout_rate"] = dropout_rate
 
             if index + 1 != len(config_list_of_layers):
                 final_layer_list.append(activation_function)
@@ -192,8 +196,8 @@ class BaseModel(ABC, nn.Module):
         val_loader = DataLoader(val_images, batch_size=self._specific_config_file["batch_size"], num_workers=2,
                                 shuffle=False)
 
-        self.train_loader = train_loader
-        self.val_loader = val_loader
+        self.train_loader = DeviceDataLoader(train_loader, device=self.device)
+        self.val_loader = DeviceDataLoader(val_loader, device=self.device)
 
     def _get_class_weights(self):
         """
@@ -335,12 +339,17 @@ class BaseModel(ABC, nn.Module):
         can be used to give the scheduler arguments
 
         :param use_class_weights: True if class weights should be used for the loss function
+        :type use_class_weights: bool
         :param lrs: Pytorch learning rate scheduler
+        :type lrs: torch.optim.lr_scheduler
         :param optim: Pytorch optimizer
+        :type optim: torch.optim.Optimizer
         :param kwargs: additional keyword arguments for the learning rate scheduler
+        :type kwargs:  kwargs
         :return: None
         """
-        tb = SummaryWriter(comment=self.name, filename_suffix=self.name)
+        mlflow.start_run(run_name=self.name)
+        #tb = SummaryWriter(comment=self.name, filename_suffix=self.name)
         early_stopping = self._specific_config_file["early_stopping"]
         optimizer = optim(self.parameters(), lr=self.learning_rate)
         lrs = lrs(optimizer, **kwargs)
@@ -373,11 +382,12 @@ class BaseModel(ABC, nn.Module):
             result["train_acc"] = torch.stack(train_accs).mean().item()
 
             # Add metrics to tensorboard logging
-            tb.add_scalar("Train loss", result["train_loss"], epoch)
-            tb.add_scalar("Train accuracy", result["train_acc"], epoch)
-            tb.add_scalar("Val accuracy", result["val_acc"], epoch)
-            tb.add_scalar("Val loss", result["val_loss"], epoch)
-            tb.add_scalar("Learning rate", result["learning_rate"], epoch)
+
+            mlflow.log_metric("Train loss", result["train_loss"], epoch)
+            mlflow.log_metric("Train accuracy", result["train_acc"], epoch)
+            mlflow.log_metric("Val accuracy", result["val_acc"], epoch)
+            mlflow.log_metric("Val loss", result["val_loss"], epoch)
+            mlflow.log_metric("Learning rate", result["learning_rate"], epoch)
             print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy: {result["train_acc"]}')
             self._epoch_end_val(epoch + 1, result)
             self.history.append(result)
@@ -403,12 +413,20 @@ class BaseModel(ABC, nn.Module):
                 if epoch % save_every_n_epoch == 0 and epoch != 0:
                     self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
-            # Add current hyperparams to tensorboard logger
-            tb.add_hparams(self.hparams_dict, {"hparam/max_accuracy": max_val_acc})
-            tb.close()
 
+        mlflow.log_params(self.hparams_dict)
+        self.save_model_intermediate_state(name=self.today, epoch=epoch, mlflow_log=True)
+        mlflow.end_run()
 
     def predict(self, images):
+        """
+        Returns prediction of batch of images
+
+        :param images: Image batch
+        :type images: torch.tensor
+        :return: prediction class
+        :rtype: torch.tensor
+        """
         out = self(images)
         prediction = torch.max(out, dim=1)[1]
         return prediction
@@ -427,18 +445,33 @@ class BaseModel(ABC, nn.Module):
             with open(os.path.join("saved_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
 
-    def save_model_intermediate_state(self, name=None, epoch=None):
+    def save_model_intermediate_state(self, name=None, epoch=None, mlflow_log=False):
+        """
+        Saves intermediate state of model during training after each given epoch
+
+        :param name: name of the model
+        :type name: str
+        :param epoch: number of epoch after which the model should be saved
+        :return: None
+        """
         if name is None:
             name = self.today
 
         if epoch is None:
             raise ValueError("Please give epoch as argument to intermediate save function in the train method!")
 
-        if os.path.exists(os.path.join("saved_models", self.name)):
-            with open(os.path.join("saved_models", self.name, name + f"epoch_num{epoch}" + ".model"), "wb")as f:
+        model_dir = os.path.join("saved_models", self.name)
+
+        file_path = os.path.join(model_dir, name + f"epoch_num{epoch}" + ".model")
+
+        if os.path.exists(model_dir):
+            with open(file_path, "wb") as f:
                 pickle.dump(self, f)
         else:
-            os.makedirs(os.path.join("saved_models", self.name))
-            with open(os.path.join("saved_models", self.name, name + f"epoch_num{epoch}" + ".model"), "wb")  as f:
+            os.makedirs(os.path.join(model_dir, self.name))
+            with open(file_path, "wb") as f:
                 pickle.dump(self, f)
+
+        if mlflow_log:
+            mlflow.log_artifact(file_path, "finaL_model_pickled")
 

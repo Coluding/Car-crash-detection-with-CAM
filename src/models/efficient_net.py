@@ -16,7 +16,7 @@ class EfficientNet(BaseModel):
         if self._config_file["create_train_test_dir"]["create_new_dirs"]:
             self.preprocess_images()
 
-        self.name = "vgg19"
+        self.name = "EfficientNet"
         self._collect_hyperparams()
         self._init_transforms() # set the transform attributes
         self._set_up_model() # combine classifer and backbone model

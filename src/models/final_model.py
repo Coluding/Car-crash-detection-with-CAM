@@ -26,3 +26,7 @@ class FinalModel:
         out_class = self.model.classes[out]
         return out, out_class
 
+
+if __name__ == "__main__":
+    f = FinalModel()
+    print(f)
