@@ -8,7 +8,7 @@ from src.models.transforms import ImageTransforms
 
 class FinalModel:
     def __init__(self):
-        with open(r"../config.yml") as f:
+        with open(r"config.yml") as f:
             self._config = yaml.safe_load(f)
 
         self._path = self._config["specific_modelName_to_use"]

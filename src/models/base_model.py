@@ -18,7 +18,7 @@ import mlflow
 class BaseModel(ABC, nn.Module):
     def __init__(self):
         super().__init__()
-        with open("../config.yml") as y:
+        with open("config.yml") as y:
             self._config_file = yaml.safe_load(y)
 
         self.device = get_default_device()
