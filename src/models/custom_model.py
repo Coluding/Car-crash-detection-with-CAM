@@ -34,7 +34,7 @@ class CustomModel1(BaseModel):
     def _init_backbone_model(self, new_model=True):
         activation_function = self._get_activation_function()
         if not new_model:
-            self.model = torch.load("saved_models/custom1.model")
+            self.model = torch.load("../saved_models/custom1.model")
         else:
             self.model = nn.Sequential(nn.Conv2d(3,64, (3,3)),
                                        activation_function,
@@ -66,10 +66,10 @@ class CustomModel1(BaseModel):
         self.model.append(classifier)
 
     def save_model(self):
-        if os.path.exists("saved_models/vgg19.model"):
-            with open("saved_models/vgg19.model", "wb") as f:
+        if os.path.exists("../saved_models/vgg19.model"):
+            with open("../saved_models/vgg19.model", "wb") as f:
                 pickle.dump(self, f)
         else:
-            os.mkdir("saved_models")
-            with open("saved_models/vgg19.model", "wb") as f:
+            os.mkdir("../saved_models")
+            with open("../saved_models/vgg19.model", "wb") as f:
                 pickle.dump(self, f)

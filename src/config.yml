@@ -1,4 +1,4 @@
-#TODO tackle class imbalance
+#TODO: tackle class imbalance
 
 create_train_test_dir :
     create_new_dirs : False # Create new train and test dirs based on a random split defined in the model configuration below
@@ -6,12 +6,12 @@ create_train_test_dir :
     destination_path : 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3'  # Adjust when using but only if create_new_dirs is set to True!!
 
 image_path: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3'  # Adjust when using!!
-model_to_use: 'vgg19'
-specific_modelName_to_use: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\src\models\saved_models\vgg19\141222epoch_num50.model'
+model_to_use: 'EfficientNet'
+specific_modelName_to_use: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\src\models\saved_models\EfficientNet\020123.test'
 
 train_verbosity: # what to print during train steps
         loss: True
-        prediction: False
+        prediction: True
         prediction_probabilities: False
         true_labels: False
 
@@ -28,7 +28,7 @@ base_model:
         flip_degrees: 30
 
 vgg19:
-    epochs: 100
+    epochs: 1
     batch_size: 64  # TODO: Include test batch size and train, otherwise the last batch of the validations tep distorts the overall test of the epoch
     learning_rate: 0.001
     train_backbone_params: True

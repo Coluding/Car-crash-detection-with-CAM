@@ -1,6 +1,9 @@
 import pickle
 import yaml
+import torch
+from PIL import Image
 from src.models.utils import *
+from src.models.transforms import ImageTransforms
 
 
 class FinalModel:
@@ -8,14 +11,30 @@ class FinalModel:
         with open(r"../config.yml") as f:
             self._config = yaml.safe_load(f)
 
-        #path = fr"./saved_models/{self._config['model_to_use']}/{self._config['model_to_use']}.model"
-        path = self._config["specific_modelName_to_use"]
-        with open(path, "rb") as f:
-            self.model = pickle.load(f)
+        self._path = self._config["specific_modelName_to_use"]
+        self._destination_path = self._config["create_train_test_dir"]["destination_path"]
+        #with open(path, "rb") as f:
+        #    self.model = pickle.load(f)
+
+        self.model = torch.load(self._path)
+
+        self.val_transforms = None
+        self.train_transforms = None
+
+        self._set_transforms()
+
+    def _set_transforms(self):
+        transforms = ImageTransforms(self._destination_path)
+        if "efficientnet" in self._path.lower():
+            self.train_transforms = transforms.efficient_net_train_transforms
+            self.val_transforms = transforms.efficient_net_val_transforms
+
+        elif "vgg19" in self._path.lower():
+            self.train_transforms = transforms.vgg19_train_transforms
+            self.val_transforms = transforms.vgg19_val_transforms
 
     def preprocess_image(self, image):
-        transforms = self.model.val_transforms
-        transformed_image = transforms(image)
+        transformed_image = self.val_transforms(image)
         final_image = torch.unsqueeze(transformed_image, 0)
         return final_image
 
@@ -23,10 +42,11 @@ class FinalModel:
         transformed_image = self.preprocess_image(image)
         out = self.model(transformed_image)
         out = torch.max(out, dim=1)[1].item()
-        out_class = self.model.classes[out]
-        return out, out_class
+        #out_class = self.model.classes[out]
+        return out
 
 
 if __name__ == "__main__":
     f = FinalModel()
-    print(f)
+    img = Image.open(r"C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3\train\crash\38.jpg")
+    print(f.predict_raw_image(img))

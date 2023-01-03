@@ -4,12 +4,12 @@ import torchvision.transforms as tt
 import torchvision
 import pickle
 import os
-from src.models.base_model import BaseModel
-from src.models.utils import ImageStats
+from base_model import BaseModel
+from transforms import ImageTransforms
 
 
 class EfficientNet(BaseModel):
-    def __init__(self):
+    def __init__(self, new_model=True, model_to_load=None):
         super().__init__()
         self._specific_config_file = self._config_file["efficient_net"]
 
@@ -17,10 +17,22 @@ class EfficientNet(BaseModel):
             self.preprocess_images()
 
         self.name = "EfficientNet"
-        self._collect_hyperparams()
-        self._init_transforms() # set the transform attributes
-        self._set_up_model() # combine classifer and backbone model
-        self._load_images() # load images into dataloader
+
+        if new_model:
+            self._collect_hyperparams()
+            self._init_transforms() # set the transform attributes
+            self._set_up_model() # combine classifer and backbone model
+
+        else:
+            self._setup_presaved_model(model_to_load=model_to_load)
+
+        self._load_images()  # load images into dataloader
+
+    def _setup_presaved_model(self, model_to_load):
+        model = super()._setup_presaved_model(model_to_load)
+
+        if not isinstance(model, self.__class__):
+            raise TypeError("The model you are trying to use is not a EfficientNet model!")
 
     def _init_transforms(self):
         """
@@ -29,31 +41,15 @@ class EfficientNet(BaseModel):
 
         :return: None
         """
-        image_stats_train = ImageStats(os.path.join(
-            self._config_file["create_train_test_dir"]["destination_path"], "train"))
-        stats = image_stats_train.compute_stats() # Normalize image data with train data stats, so the algorithm gets no
-        # information about the test data set
+        transforms = ImageTransforms(self._config_file["create_train_test_dir"]["destination_path"])
 
-        self.train_transforms = tt.Compose([
-            tt.Resize((255,255), interpolation=tt.InterpolationMode.BILINEAR),
-            tt.RandomCrop((240,240)),
-            tt.RandomRotation(30),
-            tt.RandomVerticalFlip(),
-            tt.RandomHorizontalFlip(),
-            tt.ColorJitter(),
-            tt.ToTensor(),
-            tt.Normalize(*stats, inplace=True)
-        ])
+        self.train_transforms = transforms.efficient_net_train_transforms
 
-        self.val_transforms = tt.Compose([
-            tt.Resize((255, 255), interpolation=tt.InterpolationMode.BILINEAR),
-            tt.ToTensor(),
-            tt.Normalize(*stats, inplace=True)
-        ])
+        self.val_transforms = transforms.efficient_net_val_transforms
 
     def _init_backbone_model(self, new_model=True):
         if not new_model:
-            self.model = torch.load("saved_models/vgg19.model")
+            self.model = torch.load("../saved_models/vgg19.model")
         else:
             weights = torchvision.models.EfficientNet_B1_Weights.DEFAULT
             model = torchvision.models.efficientnet_b1(weights)

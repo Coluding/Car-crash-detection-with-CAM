@@ -6,7 +6,7 @@ from PIL import Image
 from src.models import FinalModel
 from src.models import custom_model, resnet, vgg19
 
-
+os.path.abspath()
 dir_name = os.path.basename(os.path.normpath(os.getcwd()))
 
 if dir_name == "src":

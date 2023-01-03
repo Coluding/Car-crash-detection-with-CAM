@@ -33,7 +33,7 @@ class ResNetVanilla(BaseModel):
 
     def _init_backbone_model(self, new_model=True):
         if not new_model:
-            self.model = torch.load("saved_models/vgg19.model")
+            self.model = torch.load("../saved_models/vgg19.model")
         else:
             weights = torchvision.models.ResNet18_Weights.DEFAULT
             self.model = torchvision.models.resnet18(weights)
@@ -52,10 +52,10 @@ class ResNetVanilla(BaseModel):
         self.model.fc = classifier1
 
     def save_model(self):
-        if os.path.exists("saved_models/resnet/resnet.model"):
-            with open("saved_models/resnet.model", "wb") as f:
+        if os.path.exists("../saved_models/resnet/resnet.model"):
+            with open("../saved_models/resnet.model", "wb") as f:
                 pickle.dump(self, f)
         else:
-            os.mkdir("saved_models/resnet")
-            with open("saved_models/resnet/resnet.model", "wb") as f:
+            os.mkdir("../saved_models/resnet")
+            with open("../saved_models/resnet/resnet.model", "wb") as f:
                 pickle.dump(self, f)

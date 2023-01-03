@@ -8,7 +8,8 @@ import datetime
 import torchinfo
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
-from src.models.utils import EarlyStopper, create_train_and_test_dir, get_default_device, DeviceDataLoader, to_device
+from sklearn.metrics import f1_score as F1_score
+from utils import EarlyStopper, create_train_and_test_dir, get_default_device, DeviceDataLoader, to_device
 import os
 import pickle
 import mlflow
@@ -31,17 +32,53 @@ class BaseModel(ABC, nn.Module):
         self.train_loader = None
         self.val_loader = None
         self.history = []
-        # TODO: Make GPU use possible
         # TODO: Include Optuna
-        # TODO: Research Azure (train, deployment)
-        # TODO: integrate mlflow
+        # TODO: Research Azure (train, deployment): Set up VM with NVIDIA GPU (Wer hat Entwicklerrechner?)
+        # TODO: Azure cognitive services
         # TODO: save model with ONNX
+        # TODO: Logging
+        # TODO: Save torch model and load torch model additional to pickling
+        # TODO: Log f1 score
+        # TODO: Deploy model in azure using ml studio
 
     def __str__(self):
         return self.model.__str__()
 
     def __repr__(self):
         return torchinfo.summary(self.model)
+
+    def _setup_presaved_model(self, model_to_load):
+        """
+        Loads already trained model and assigns all its attributes to the current model. Hence further training is possible
+
+        :param model_to_load: Path to already trained model
+        :type model_to_load: str
+        :return: None
+
+        """
+        print("loading pretrained model")
+        with open(model_to_load, "rb") as file:
+            model = pickle.load(file)
+        self.model = model
+        if torch.nn.modules.module.Module not in model.__class__.__mro__:
+            raise TypeError(
+                "Saved model loaded by given path is not submodule of torch.nn.modules.module.Module. Please"
+                " make sure to specify the path for a correct model!")
+
+        self.train_transforms = model.train_transforms
+        self.val_transforms = model.val_transforms
+        self.hparams_dict = model.hparams_dict
+
+        self.epochs = model.epochs
+        self.batch_size = model.batch_size
+        self.learning_rate = model.learning_rate
+        self.train_backbone_weights = model.train_backbone_weights
+        self.train_test_split_ratio = model.train_test_split_ratio
+        self.classifier_layer = model.classifier_layer
+        self.activation_function = model.activation_function
+        self.history = model.history
+
+        return model
 
     @staticmethod
     def accuracy(output, labels):
@@ -57,6 +94,22 @@ class BaseModel(ABC, nn.Module):
         """
         _, preds = torch.max(output, dim=1)
         return torch.tensor(torch.sum(preds == labels) / len(preds))
+
+    @staticmethod
+    def compute_f1(output, labels):
+        """
+        Computes the f1_score of a prediction
+
+        :param output: Prediction outputs
+        :type output: torch.tensor
+        :param labels: True labels for the output
+        :type labels: torch.tensor
+        :return: f1_score of the prediction
+        :rtype: torch.tensor
+        """
+        _, preds = torch.max(output, dim=1)
+        return torch.tensor(F1_score(labels, preds))
+
 
     @abstractmethod
     def _init_transforms(self):
@@ -253,7 +306,8 @@ class BaseModel(ABC, nn.Module):
         else:
             loss = F.nll_loss(out, labels)
 
-        acc = self.accuracy(out, labels) # TODO: F1 Score
+        acc = self.accuracy(out, labels)  # TODO: F1 Score
+        f1_score = self.compute_f1(out,labels)
 
         if self._config_file["train_verbosity"]["loss"]:
             print(f"Train step loss: {loss}")
@@ -265,11 +319,12 @@ class BaseModel(ABC, nn.Module):
 
         if self._config_file["train_verbosity"]["prediction"]:
             print(f"Train predictions: {torch.max(out, dim=1)[1]}")
+            print(f"Train f1_score: {f1_score}")
 
         if self._config_file["train_verbosity"]["true_labels"]:
             print(f"True targets: {labels}")
 
-        return loss, acc
+        return loss, acc, f1_score
 
     def validation_step(self, batch):
         """
@@ -280,11 +335,13 @@ class BaseModel(ABC, nn.Module):
         :return: loss and accuracy of batch
         :rtype: torch.tensor
         """
-        self.eval() # Leave out dropout layers and batch norm layers
+        self.eval()  # Leave out dropout layers and batch norm layers
         images, labels = batch
         out = self(images)
         loss = F.cross_entropy(out, labels)
         accuracy = self.accuracy(out, labels)
+
+        f1_score = self.compute_f1(out, labels)
 
         if self._config_file["validation_verbosity"]["loss"]:
             print(f"val step loss: {loss}")
@@ -301,8 +358,9 @@ class BaseModel(ABC, nn.Module):
 
         if self._config_file["validation_verbosity"]["prediction"]:
             print(f"Validation accuracy: {accuracy}")
+            print(f"Validation f1 score: {f1_score}")
 
-        return {"val_loss": loss, "val_acc": accuracy}
+        return {"val_loss": loss, "val_acc": accuracy, "val_f1": f1_score}
 
     def validation_epoch_end(self, outputs):
         """
@@ -315,9 +373,11 @@ class BaseModel(ABC, nn.Module):
         """
         batch_losses = [x["val_loss"] for x in outputs]
         batch_acc = [x["val_acc"] for x in outputs]
+        batch_f1 = [x["val_f1"] for x in outputs]
         epoch_losses = torch.stack(batch_losses).mean().item()
         epoch_acc = torch.stack(batch_acc).mean().item()
-        return {"val_loss": epoch_losses, "val_acc": epoch_acc}
+        epoch_f1 = torch.stack(batch_f1).mean().item()
+        return {"val_loss": epoch_losses, "val_acc": epoch_acc, "val_f1": epoch_f1}
 
     def _epoch_end_val(self, epoch, results):
         """
@@ -330,7 +390,8 @@ class BaseModel(ABC, nn.Module):
         :return: None
         """
         print(f"Epoch[{epoch}]: val_loss: {results['val_loss']}"
-              f" val_acc: {results['val_acc']}")
+              f" val_acc: {results['val_acc']}"
+              f" val_f1_score: {results['val_f1']}")
 
     def fit(self, optim=torch.optim.Adam, lrs=torch.optim.lr_scheduler.ReduceLROnPlateau, use_class_weights=True,
             save_every_n_epoch=None, **kwargs):
@@ -347,76 +408,94 @@ class BaseModel(ABC, nn.Module):
         :param kwargs: additional keyword arguments for the learning rate scheduler
         :type kwargs:  kwargs
         :return: None
+
         """
-        mlflow.start_run(run_name=self.name)
-        #tb = SummaryWriter(comment=self.name, filename_suffix=self.name)
-        early_stopping = self._specific_config_file["early_stopping"]
-        optimizer = optim(self.parameters(), lr=self.learning_rate)
-        lrs = lrs(optimizer, **kwargs)
+        mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../mlruns"))
 
-        if early_stopping:
-            early_stopper = EarlyStopper(patience=10, min_delta=0.3)
+        with mlflow.start_run(run_name=f"{self.name}_{self.today}"):
 
-        max_val_acc = 0 # save max test accuracy
+            early_stopping = self._specific_config_file["early_stopping"]
+            optimizer = optim(self.parameters(), lr=self.learning_rate)
+            lrs = lrs(optimizer, **kwargs)
 
-        for epoch in range(self.epochs):
-            self.train() # Activate train mode, so that dropout and batch norm layers are used
-            train_losses = []
-            train_accs = []
-            for batch_number, batch in enumerate(self.train_loader):
-                optimizer.zero_grad()
-                print(f"new batch: {batch_number}")
-                loss, train_acc = self.training_step(batch, use_class_weights)
-                loss.backward()
-                train_losses.append(loss)
-                train_accs.append(train_acc)
-
-                optimizer.step()
-
-            print(f"Epoch {epoch + 1} done!")
-            print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
-            result = self.evaluate()
-
-            result["learning_rate"] = optimizer.param_groups[0]["lr"]
-            result["train_loss"] = torch.stack(train_losses).mean().item()
-            result["train_acc"] = torch.stack(train_accs).mean().item()
-
-            # Add metrics to tensorboard logging
-
-            mlflow.log_metric("Train loss", result["train_loss"], epoch)
-            mlflow.log_metric("Train accuracy", result["train_acc"], epoch)
-            mlflow.log_metric("Val accuracy", result["val_acc"], epoch)
-            mlflow.log_metric("Val loss", result["val_loss"], epoch)
-            mlflow.log_metric("Learning rate", result["learning_rate"], epoch)
-            print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy: {result["train_acc"]}')
-            self._epoch_end_val(epoch + 1, result)
-            self.history.append(result)
-
-            # The learning rate is reduced when the val loss is on a plateau, meaning it does not make significant
-            # changes --> local minima
-            lrs.step(metrics=result["val_loss"])
-
-            if max_val_acc < result["val_acc"]:
-                max_val_acc = result["val_acc"]
-
-            # If early stopping is set to true in the config file the early stopper checks after every loop for early
-            # stop criterion
             if early_stopping:
-                if early_stopper.early_stop(result["val_loss"]):
-                    print(f"Early stopping in epoch: {epoch}")
-                    break
-                else:
-                    print("No early stopping!")
+                early_stopper = EarlyStopper(patience=10, min_delta=0.3)
 
-            # Save intermediate state of model every n epochs
-            if save_every_n_epoch is not None:
-                if epoch % save_every_n_epoch == 0 and epoch != 0:
-                    self.save_model_intermediate_state(name=self.today, epoch=epoch)
+            max_val_acc = 0  # save max test accuracy
+
+            # If a saved model was loaded, the history attribute is not empty and contains information about previously
+            # trained epochs, so the new start epoch is the epoch after the last epoch of the previously trained model
+            if len(self.history) != 0:
+                start = len(self.history) + 1
+            else:
+                start = 1
+
+            for epoch in range(start, start + self.epochs + 1):
+                self.train()  # Activate train mode, so that dropout and batch norm layers are used
+                train_losses = []
+                train_accs = []
+                train_f1s = []
+                for batch_number, batch in enumerate(self.train_loader):
+                    optimizer.zero_grad()
+                    print(f"new batch: {batch_number}")
+                    loss, train_acc, train_f1 = self.training_step(batch, use_class_weights)
+                    loss.backward()
+                    train_losses.append(loss)
+                    train_accs.append(train_acc)
+                    train_f1s.append(train_f1)
+
+                    optimizer.step()
 
 
-        mlflow.log_params(self.hparams_dict)
-        self.save_model_intermediate_state(name=self.today, epoch=epoch, mlflow_log=True)
-        mlflow.end_run()
+                print(f"Epoch {epoch} done!")
+                print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
+                result = self.evaluate()
+
+
+                result["learning_rate"] = optimizer.param_groups[0]["lr"]
+                result["train_loss"] = torch.stack(train_losses).mean().item()
+                result["train_acc"] = torch.stack(train_accs).mean().item()
+                result["train_f1"] = torch.stack(train_f1s).mean().item()
+
+                # Add metrics to mlflow logging
+
+                mlflow.log_metric("Train loss", result["train_loss"], epoch)
+                mlflow.log_metric("Train accuracy", result["train_acc"], epoch)
+                mlflow.log_metric("Train f1 score", result["train_f1"], epoch)
+                mlflow.log_metric("Val accuracy", result["val_acc"], epoch)
+                mlflow.log_metric("Val loss", result["val_loss"], epoch)
+                mlflow.log_metric("Learning Val f1 score", result["val_f1"], epoch)
+                mlflow.log_metric("Learning rate", result["learning_rate"], epoch)
+                print(f'Epoch train loss: {result["train_loss"]}, Epoch train accuracy: {result["train_acc"]}')
+                self._epoch_end_val(epoch, result)
+                self.history.append(result)
+
+                # The learning rate is reduced when the val loss is on a plateau, meaning it does not make significant
+                # changes --> local minima
+                lrs.step(metrics=result["val_loss"])
+
+                if max_val_acc < result["val_acc"]:
+                    max_val_acc = result["val_acc"]
+
+                # If early stopping is set to true in the config file the early stopper checks after every loop for
+                # early stop criterion
+                if early_stopping:
+                    if early_stopper.early_stop(result["val_loss"]):
+                        print(f"Early stopping in epoch: {epoch}")
+                        break
+                    else:
+                        print("No early stopping!")
+
+                # Save intermediate state of model every n epochs
+                if save_every_n_epoch is not None:
+                    if epoch % save_every_n_epoch == 0 and epoch != 0:
+                        self.save_model_intermediate_state(name=f"{self.today}_f1_score={result['val_f1']}",
+                                                           epoch=epoch)
+                        self.torch_save_model(name=f"{self.today}_f1_score={result['val_f1']}",
+                                              epoch=epoch)
+
+            mlflow.log_params(self.hparams_dict)
+            self.save_model_intermediate_state(name=self.today, epoch=epoch, mlflow_log=True)
 
     def predict(self, images):
         """
@@ -435,14 +514,21 @@ class BaseModel(ABC, nn.Module):
         print(torchinfo.summary(self.model, input_size=input_size))
 
     def save_model(self, name=None):
+        """
+        Saves model as pickled object to use for further training
+
+        :param name: Name of model
+        :type name str
+        :return: None
+        """
         if name is None:
             name = self.today
-        if os.path.exists(os.path.join("saved_models", self.name)):
-            with open(os.path.join("saved_models", self.name, name + ".model"), "wb")as f:
+        if os.path.exists(os.path.join("../saved_models/pickled_models", self.name)):
+           with open(os.path.join("../saved_models/pickled_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
         else:
-            os.makedirs(os.path.join("saved_models", self.name))
-            with open(os.path.join("saved_models", self.name, name + ".model"), "wb") as f:
+            os.makedirs(os.path.join("../saved_models/pickled_models", self.name))
+            with open(os.path.join("../saved_models/pickled_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
 
     def save_model_intermediate_state(self, name=None, epoch=None, mlflow_log=False):
@@ -460,7 +546,7 @@ class BaseModel(ABC, nn.Module):
         if epoch is None:
             raise ValueError("Please give epoch as argument to intermediate save function in the train method!")
 
-        model_dir = os.path.join("saved_models", self.name)
+        model_dir = os.path.join("../saved_models/pickled_models", self.name)
 
         file_path = os.path.join(model_dir, name + f"epoch_num{epoch}" + ".model")
 
@@ -474,4 +560,21 @@ class BaseModel(ABC, nn.Module):
 
         if mlflow_log:
             mlflow.log_artifact(file_path, "finaL_model_pickled")
+
+    def torch_save_model(self, name=None):
+        """
+        Saves torch version of model to reuse it as a plain torch model and for inference
+
+        :param name: Name of model
+        :type name str
+        :return: None
+        """
+        if name is None:
+            name = self.today
+        if os.path.exists(os.path.join("../saved_models/torch_models", self.name)):
+            torch.save(self.model, os.path.join("../saved_models", self.name, name + ".torch_model"))
+
+        else:
+            os.makedirs(os.path.join("../saved_models/torch_models", self.name))
+            torch.save(self.model, os.path.join("../saved_models/torch_models", self.name, name + ".torch_model"))
 
