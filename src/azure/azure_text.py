@@ -40,13 +40,15 @@ provisioning_config = AmlCompute.provisioning_configuration(vm_size = vm_size,
                                                             min_nodes = 0,
                                                             max_nodes = 10)
 # create the cluster
-compute_target = ComputeTarget.create(ws, compute_name, provisioning_config)
+#compute_target = ComputeTarget.create(ws, compute_name, provisioning_config)
 
 from azureml.core.environment import Environment
 from azureml.core.conda_dependencies import CondaDependencies
 
 # create an enviornment
-env = Environment(name='new-cv-env-gpu')
+env = Environment(name='insurance_image_recog')
+                                                 # "file:///D:\ML\DL\projects\insurance_image_recog\environment.yml")
+
 
 """# define packages for image
 cd = CondaDependencies.create(pip_packages=[
@@ -129,13 +131,15 @@ cd = CondaDependencies.create(pip_packages=[
 ])"""
 
 cd = CondaDependencies.create(pip_packages=[
-    "torch==1.13.0",
+    "azureml-defaults",
+    "torch==1.12.0",
     "mlflow==2.0.1",
     "torchinfo==1.7.1",
-    "torchvision==0.14.0"
+    "torchvision==0.14.0",
+    "cudatoolkit==11.3.1"
     ])
 
-
+env.python.conda_dependencies = cd
 # Specify a docker image to use.
 env.docker.base_image = (
     "mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.0.3-cudnn8-ubuntu18.04"
@@ -144,7 +148,7 @@ env.docker.base_image = (
 # Register environment to re-use later
 env = env.register(workspace = ws)
 
-datastore = ws.get_default_datastore()
+#datastore = ws.get_default_datastore()
 
 r"""# upload the data to the datastore
 datastore.upload(src_dir=r'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3',

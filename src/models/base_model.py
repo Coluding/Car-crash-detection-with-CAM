@@ -7,12 +7,12 @@ import torch.nn.functional as F
 import datetime
 import torchinfo
 from abc import ABC, abstractmethod
-from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import f1_score as F1_score
 from utils import EarlyStopper, create_train_and_test_dir, get_default_device, DeviceDataLoader, to_device
 import os
 import pickle
 import mlflow
+import numpy as np
 
 
 class BaseModel(ABC, nn.Module):
@@ -107,9 +107,10 @@ class BaseModel(ABC, nn.Module):
         :return: f1_score of the prediction
         :rtype: torch.tensor
         """
+        output = output.cpu()
+        labels = labels.cpu()
         _, preds = torch.max(output, dim=1)
-        return torch.tensor(F1_score(labels, preds))
-
+        return F1_score(labels, preds)
 
     @abstractmethod
     def _init_transforms(self):
@@ -271,6 +272,8 @@ class BaseModel(ABC, nn.Module):
         class_weights = total_image_numbers / image_number_sum
         class_weights = 1 / class_weights
 
+        class_weights = to_device(class_weights, self.device)
+
         return class_weights
 
     def forward(self, xb):
@@ -307,7 +310,7 @@ class BaseModel(ABC, nn.Module):
             loss = F.nll_loss(out, labels)
 
         acc = self.accuracy(out, labels)  # TODO: F1 Score
-        f1_score = self.compute_f1(out,labels)
+        f1_score = self.compute_f1(out, labels)
 
         if self._config_file["train_verbosity"]["loss"]:
             print(f"Train step loss: {loss}")
@@ -376,7 +379,7 @@ class BaseModel(ABC, nn.Module):
         batch_f1 = [x["val_f1"] for x in outputs]
         epoch_losses = torch.stack(batch_losses).mean().item()
         epoch_acc = torch.stack(batch_acc).mean().item()
-        epoch_f1 = torch.stack(batch_f1).mean().item()
+        epoch_f1 = np.mean(batch_f1)
         return {"val_loss": epoch_losses, "val_acc": epoch_acc, "val_f1": epoch_f1}
 
     def _epoch_end_val(self, epoch, results):
@@ -446,16 +449,14 @@ class BaseModel(ABC, nn.Module):
 
                     optimizer.step()
 
-
                 print(f"Epoch {epoch} done!")
                 print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
                 result = self.evaluate()
 
-
                 result["learning_rate"] = optimizer.param_groups[0]["lr"]
                 result["train_loss"] = torch.stack(train_losses).mean().item()
                 result["train_acc"] = torch.stack(train_accs).mean().item()
-                result["train_f1"] = torch.stack(train_f1s).mean().item()
+                result["train_f1"] = np.mean(train_f1s)
 
                 # Add metrics to mlflow logging
 
@@ -495,7 +496,7 @@ class BaseModel(ABC, nn.Module):
                                               epoch=epoch)
 
             mlflow.log_params(self.hparams_dict)
-            self.save_model_intermediate_state(name=self.today, epoch=epoch, mlflow_log=True)
+            self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
     def predict(self, images):
         """
@@ -524,7 +525,7 @@ class BaseModel(ABC, nn.Module):
         if name is None:
             name = self.today
         if os.path.exists(os.path.join("../saved_models/pickled_models", self.name)):
-           with open(os.path.join("../saved_models/pickled_models", self.name, name + ".model"), "wb") as f:
+            with open(os.path.join("../saved_models/pickled_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
         else:
             os.makedirs(os.path.join("../saved_models/pickled_models", self.name))
@@ -559,7 +560,7 @@ class BaseModel(ABC, nn.Module):
                 pickle.dump(self, f)
 
         if mlflow_log:
-            mlflow.log_artifact(file_path, "finaL_model_pickled")
+            mlflow.log_artifact(file_path, "final_model_pickled")
 
     def torch_save_model(self, name=None):
         """

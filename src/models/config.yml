@@ -2,10 +2,10 @@
 
 create_train_test_dir :
     create_new_dirs : False # Create new train and test dirs based on a random split defined in the model configuration below
-    source_path : 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3' # Adjust when using but only if create_new_dirs is set to True!!
-    destination_path : 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3'  # Adjust when using but only if create_new_dirs is set to True!!
+    source_path : 'D:\ML\DL\projects\insurance_image_recog\data4'
+    destination_path : 'D:\ML\DL\projects\insurance_image_recog\data4'  # Adjust when using but only if create_new_dirs is set to True!!
 
-image_path: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3'  # Adjust when using!!
+image_path: '..\..\data4'  # Adjust when using!!
 model_to_use: 'EfficientNet'
 specific_modelName_to_use: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\src\models\saved_models\EfficientNet\020123.test'
 

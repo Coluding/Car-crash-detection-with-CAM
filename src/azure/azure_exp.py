@@ -4,18 +4,18 @@ from azureml.core import Experiment, ScriptRunConfig
 # define the experiment
 
 ws = Workspace.from_config()
-env = Environment.get(workspace=ws, name="new-cv-env-gpu")
+env = Environment.get(workspace=ws, name="insurance_image_recog")
 
 # Get the registered dataset from azure
 #dataset = Dataset.get_by_name(ws, name='crash_images')
 
 # get our compute target
-compute_target = ws.compute_targets["gpu-cluster-2"]
+compute_target = ws.compute_targets["cpu-cluster-2"]
 exp = Experiment(workspace=ws, name='test_training')
 
 # setup the run details
 src = ScriptRunConfig(source_directory="../models",
-                      script='azure_test_imports.py',
+                      script='model_training.py',
                       compute_target=compute_target,
                       environment=env)
 
