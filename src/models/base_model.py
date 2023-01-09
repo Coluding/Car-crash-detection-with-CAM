@@ -17,6 +17,9 @@ import numpy as np
 
 class BaseModel(ABC, nn.Module):
     def __init__(self):
+        """
+        Constructor of base model
+        """
         super().__init__()
         with open("config.yml") as y:
             self._config_file = yaml.safe_load(y)
@@ -40,6 +43,9 @@ class BaseModel(ABC, nn.Module):
         # TODO: Save torch model and load torch model additional to pickling
         # TODO: Log f1 score
         # TODO: Deploy model in azure using ml studio
+        # TODO: Register model in azure and log metrics in azure while training in the cloud
+        # TODO: Num workers of validation set
+        # TODO: env variables in compute cluster
 
     def __str__(self):
         return self.model.__str__()
@@ -231,15 +237,20 @@ class BaseModel(ABC, nn.Module):
             outputs = [self.validation_step(batch) for batch in self.val_loader]
             return self.validation_epoch_end(outputs)
 
-    def _load_images(self):
+    def _load_images(self, train_path=None, val_path=None):
         """
         Loads the images into pytorch dataloaders for further processing and uses the settings specified in the
         config file
 
         :return: None
         """
-        train_path = os.path.join(self._config_file["image_path"], "train")
-        val_path = os.path.join(self._config_file["image_path"], "test")
+        if train_path and val_path: # when using azureml remote datasets
+            train_path = train_path
+            val_path = val_path
+        else:
+            train_path = os.path.join(self._config_file["image_path"], "train")
+            val_path = os.path.join(self._config_file["image_path"], "test")
+
         train_images = ImageFolder(train_path, self.train_transforms)
         val_images = ImageFolder(val_path, self.val_transforms)
         self.classes = train_images.classes
@@ -253,7 +264,24 @@ class BaseModel(ABC, nn.Module):
         self.train_loader = DeviceDataLoader(train_loader, device=self.device)
         self.val_loader = DeviceDataLoader(val_loader, device=self.device)
 
-    def _get_class_weights(self):
+    def _load_images_remote_using_azureml(self, train_path, val_path):
+        train_path = train_path
+        val_path = val_path
+        train_images = ImageFolder(train_path, self.train_transforms)
+        val_images = ImageFolder(val_path, self.val_transforms)
+        self.classes = train_images.classes
+        # more augmenting !!
+
+        train_loader = DataLoader(train_images, batch_size=self._specific_config_file["batch_size"], num_workers=2,
+                                  shuffle=True)
+        val_loader = DataLoader(val_images, batch_size=self._specific_config_file["batch_size"], num_workers=2,
+                                shuffle=False)
+
+        self.train_loader = DeviceDataLoader(train_loader, device=self.device)
+        self.val_loader = DeviceDataLoader(val_loader, device=self.device)
+
+
+    def _get_class_weights(self, azure_train_path=None):
         """
         Collects the class weights by counting the items of each class to tackle class imbalance
 
@@ -262,7 +290,10 @@ class BaseModel(ABC, nn.Module):
         """
         image_number_sum = 0
         total_image_numbers = []
-        path = os.path.join(self._config_file["image_path"], "train")
+        if azure_train_path:
+            path = azure_train_path
+        else:
+            path = os.path.join(self._config_file["image_path"], "train")
         for image_class in os.listdir(path):
             number_images = len(os.listdir(os.path.join(path, image_class)))
             image_number_sum += number_images
@@ -397,7 +428,7 @@ class BaseModel(ABC, nn.Module):
               f" val_f1_score: {results['val_f1']}")
 
     def fit(self, optim=torch.optim.Adam, lrs=torch.optim.lr_scheduler.ReduceLROnPlateau, use_class_weights=True,
-            save_every_n_epoch=None, **kwargs):
+            save_every_n_epoch=None, azure_workspace=None,**kwargs):
         """
         Fits the model with specified hyperparams of the config file. If a learning rate scheduler is used, the **kwargs
         can be used to give the scheduler arguments
@@ -413,7 +444,11 @@ class BaseModel(ABC, nn.Module):
         :return: None
 
         """
-        mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../mlruns"))
+        if azure_workspace:
+            mlflow.set_tracking_uri(azure_workspace.get_mlflow_tracking_uri())
+
+        else:
+            mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../mlruns"))
 
         with mlflow.start_run(run_name=f"{self.name}_{self.today}"):
 
@@ -492,10 +527,10 @@ class BaseModel(ABC, nn.Module):
                     if epoch % save_every_n_epoch == 0 and epoch != 0:
                         self.save_model_intermediate_state(name=f"{self.today}_f1_score={result['val_f1']}",
                                                            epoch=epoch)
-                        self.torch_save_model(name=f"{self.today}_f1_score={result['val_f1']}",
-                                              epoch=epoch)
+                        self.torch_save_model(name=f"{self.today}_f1_score={result['val_f1']}")
 
             mlflow.log_params(self.hparams_dict)
+            mlflow.pytorch.log_model(self.model, f"{self.today}_f1_score={result['val_f1']}")
             self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
     def predict(self, images):

@@ -9,9 +9,27 @@ from transforms import ImageTransforms
 
 
 class EfficientNet(BaseModel):
-    def __init__(self, new_model=True, model_to_load=None):
+    def __init__(self, new_model=True, model_to_load=None, remote_run=False, train_path=None, val_path=None):
+        """
+        Constructor of base model
+
+        :param new_model: True, if a new model should be built and no previuous model should be loaded
+        :type new_model: bool
+        :param model_to_load: if new_model is false, then path to the model pickled model that should be loaded for fine tuning
+        :type model_to_load: bool
+        :param remote_run: True, if the model is trained in the cloud
+        :type remote_run: bool
+        :param train_path: Remote path of the data if the model is trained in the cloud
+        :type train_path: str
+        :param val_path: Remote path of the validation data if the model is trained in the cloud
+        :type val_path: str:
+        :return: None
+        """
         super().__init__()
         self._specific_config_file = self._config_file["efficient_net"]
+        self._train_remote = remote_run
+        self.azure_train_path = train_path
+        self.azure_val_path = val_path
 
         if self._config_file["create_train_test_dir"]["create_new_dirs"]:
             self.preprocess_images()
@@ -26,7 +44,11 @@ class EfficientNet(BaseModel):
         else:
             self._setup_presaved_model(model_to_load=model_to_load)
 
-        self._load_images()  # load images into dataloader
+        if remote_run:
+            self._load_images(train_path=train_path, val_path=val_path)  # load images into dataloader
+
+        else:
+            self._load_images()
 
     def _setup_presaved_model(self, model_to_load):
         model = super()._setup_presaved_model(model_to_load)
@@ -41,7 +63,12 @@ class EfficientNet(BaseModel):
 
         :return: None
         """
-        transforms = ImageTransforms(self._config_file["create_train_test_dir"]["destination_path"])
+        if self._train_remote:
+            image_path = self.azure_train_path
+        else:
+            image_path = self._config_file["image_path"]
+
+        transforms = ImageTransforms(image_path)
 
         self.train_transforms = transforms.efficient_net_train_transforms
 
@@ -70,4 +97,11 @@ class EfficientNet(BaseModel):
 
         model.classifier = classifier
         self.model = model
+
+    def _get_class_weights(self):
+        if self._train_remote:
+            super()._get_class_weights(self.azure_train_path)
+        else:
+            super()._get_class_weights()
+
 

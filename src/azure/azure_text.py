@@ -50,6 +50,9 @@ env = Environment(name='insurance_image_recog')
                                                  # "file:///D:\ML\DL\projects\insurance_image_recog\environment.yml")
 
 
+env.environment_variables['CUDA_ALLOC_CONF'] = "max_split_size_mb:64"
+
+
 """# define packages for image
 cd = CondaDependencies.create(pip_packages=[
     "absl-py==1.3.0",
@@ -135,8 +138,9 @@ cd = CondaDependencies.create(pip_packages=[
     "torch==1.12.0",
     "mlflow==2.0.1",
     "torchinfo==1.7.1",
-    "torchvision==0.14.0",
-    "cudatoolkit==11.3.1"
+    "torchvision==0.13.0",
+    "cudatoolkit==11.3.1",
+    "azureml-mlflow==1.48.0"
     ])
 
 env.python.conda_dependencies = cd
@@ -162,6 +166,7 @@ from azureml.core import Dataset
 dataset = Dataset.File.from_files(path=(datastore, '/data'))
 
 # register the dataset for future use
-dataset = dataset.register(workspace=ws,
-                           name='crash_images',
-                          description='Crash and no crash images for classification')"""
+    dataset = dataset.register(workspace=ws,
+                               name='crash_images',
+                              description='Crash and no crash images for classification')"""
+
