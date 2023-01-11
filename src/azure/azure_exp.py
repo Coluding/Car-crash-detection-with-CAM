@@ -27,7 +27,5 @@ src = ScriptRunConfig(source_directory="../models",
                       compute_target=compute_target,
                       environment=env)
 
-#src.environment_variables['CUDA_ALLOC_CONF'] = "max_split_size_mb:64"
-
 # Submit the model to azure!
 run = exp.submit(config=src)

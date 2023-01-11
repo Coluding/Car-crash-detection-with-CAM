@@ -1,9 +1,11 @@
+import os.path
 import pickle
 import yaml
 import torch
 from PIL import Image
-from src.models.utils import *
-from src.models.transforms import ImageTransforms
+import sys
+from utils import *
+from transforms import ImageTransforms
 
 
 class FinalModel:
@@ -11,12 +13,14 @@ class FinalModel:
         with open(r"config.yml") as f:
             self._config = yaml.safe_load(f)
 
-        self._path = self._config["specific_modelName_to_use"]
+        self._path = self._config["specific_model_name_to_use"]
         self._destination_path = self._config["create_train_test_dir"]["destination_path"]
         #with open(path, "rb") as f:
         #    self.model = pickle.load(f)
-
-        self.model = torch.load(self._path)
+        try:
+            self.model = torch.load(self._path)
+        except RuntimeError:
+            self.model = torch.load(self._path, map_location=torch.device('cpu'))
 
         self.val_transforms = None
         self.train_transforms = None

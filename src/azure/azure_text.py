@@ -152,21 +152,21 @@ env.docker.base_image = (
 # Register environment to re-use later
 env = env.register(workspace = ws)
 
-#datastore = ws.get_default_datastore()
+datastore = ws.get_default_datastore()
 
-r"""# upload the data to the datastore
+# upload the data to the datastore
 datastore.upload(src_dir=r'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3',
                  target_path='/data/',
                  overwrite=False,
-                 show_progress=True)"""
+                 show_progress=True)
 
 from azureml.core import Dataset
 
-"""# create the dataset object
+# create the dataset object
 dataset = Dataset.File.from_files(path=(datastore, '/data'))
 
 # register the dataset for future use
-    dataset = dataset.register(workspace=ws,
-                               name='crash_images',
-                              description='Crash and no crash images for classification')"""
+dataset = dataset.register(workspace=ws,
+                           name='crash_images',
+                          description='Crash and no crash images for classification')
 

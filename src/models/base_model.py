@@ -36,7 +36,7 @@ class BaseModel(ABC, nn.Module):
         self.val_loader = None
         self.history = []
         # TODO: Include Optuna
-        # TODO: Research Azure (train, deployment): Set up VM with NVIDIA GPU (Wer hat Entwicklerrechner?)
+        # TODO: Research Azure (train, app): Set up VM with NVIDIA GPU (Wer hat Entwicklerrechner?)
         # TODO: Azure cognitive services
         # TODO: save model with ONNX
         # TODO: Logging

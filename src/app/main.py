@@ -3,10 +3,14 @@ import os
 import sys
 from fastapi import FastAPI, HTTPException, status, File, UploadFile
 from PIL import Image
-from src.models import FinalModel
-from src.models import custom_model, resnet, vgg19
+sys.path.append(os.path.abspath("./src/models"))
 
-os.path.abspath()
+from utils import *
+from transforms import ImageTransforms
+from final_model import FinalModel
+from efficient_net import EfficientNet
+
+
 dir_name = os.path.basename(os.path.normpath(os.getcwd()))
 
 if dir_name == "src":
@@ -39,6 +43,6 @@ def predict(file: UploadFile = File(...)):
     finally:
         file.file.close()
 
-    return {"prediction_name": out[0], "prediction_class": out[1]}
+    return {"prediction_class": out}
 
 

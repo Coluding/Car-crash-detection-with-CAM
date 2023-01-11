@@ -8,7 +8,6 @@ from efficient_net import EfficientNet
 
 def init_model_with_azure_remote_paths():
     parser = argparse.ArgumentParser()
-    #os.environ['CUDA_ALLOC_CONF'] = "max_split_size_mb:32"
     parser.add_argument('--data-path', type=str,
                         dest='data_path',
                         default='data',
@@ -31,7 +30,7 @@ def init_model_with_local_paths():
     return model
 
 
-def main():
+def run_training():
 
     ws = Workspace(
         subscription_id="a0375d6b-a4f6-4c9e-9054-e9982f6f6765",
@@ -49,4 +48,4 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    run_training()
