@@ -11,13 +11,13 @@ class ImageTransforms:
         stats = image_stats_train.compute_stats()
 
         self.efficient_net_val_transforms = tt.Compose([
-            tt.Resize((255, 255), interpolation=tt.InterpolationMode.BILINEAR),
+            tt.Resize((256, 256), interpolation=tt.InterpolationMode.BILINEAR),
             tt.ToTensor(),
             tt.Normalize(*stats, inplace=True)
         ])
 
         self.efficient_net_train_transforms = tt.Compose([
-            tt.Resize((255, 255), interpolation=tt.InterpolationMode.BILINEAR),
+            tt.Resize((256, 256), interpolation=tt.InterpolationMode.BILINEAR),
             tt.RandomCrop((240, 240)),
             tt.RandomRotation(30),
             tt.RandomVerticalFlip(),

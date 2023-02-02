@@ -8,6 +8,7 @@ from base_model import BaseModel
 from transforms import ImageTransforms
 
 
+
 class EfficientNet(BaseModel):
     def __init__(self, new_model=True, model_to_load=None, remote_run=False, train_path=None, val_path=None):
         """
@@ -80,6 +81,7 @@ class EfficientNet(BaseModel):
         else:
             weights = torchvision.models.EfficientNet_B1_Weights.DEFAULT
             model = torchvision.models.efficientnet_b1(weights)
+
             self.transforms = weights.transforms()
 
         for param in model.parameters():
@@ -103,5 +105,4 @@ class EfficientNet(BaseModel):
             super()._get_class_weights(self.azure_train_path)
         else:
             super()._get_class_weights()
-
 
