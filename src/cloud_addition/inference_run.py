@@ -1,15 +1,17 @@
-import json
-import sys
-import os
 from PIL import Image
 import io
-from transforms import ImageTransforms
-from final_model import FinalModel
+import yaml
+from src.model_architecture.final_model import FinalModel
 
 
 def init():
     global model
-    model = FinalModel()
+    with open(r"../model_architecture/training/config.yml") as f:
+        config = yaml.safe_load(f)
+    model_path = config["specific_model_name_to_use"]
+    data_path = config["create_train_test_dir"]["destination_path"]
+
+    model = FinalModel(model_path, data_path)
 
 
 def run(file):

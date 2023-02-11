@@ -35,8 +35,6 @@ def run_training():
     model = init_model_with_local_paths()
 
     model.fit(patience=5, factor=0.1) # Learning rate scheduler kwargs
-    #model.torch_save_model()
-    #model.save_model()
 
 
 if __name__ == "__main__":

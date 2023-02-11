@@ -1,10 +1,9 @@
-import sys
 import os
-from src.azure.azure_connection import AzureConnection
+from src.cloud_addition.azure.azure_connection import AzureConnection
 
 
 def main():
-    os.chdir("./azure")
+    os.chdir("")
     azure_con = AzureConnection()
     azure_con.run_script()
 

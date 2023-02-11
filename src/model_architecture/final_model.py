@@ -1,28 +1,26 @@
 import os.path
-import pickle
-
 import torchvision.models
 import yaml
-import torch
 from PIL import Image
-import sys
-from utils import *
-from transforms import ImageTransforms
 from scipy import ndimage
 import matplotlib.pyplot as plt
-import torch.nn.functional as F
 import numpy as np
 from typing import Union
+import torch
+
+try:
+    from .training.transforms import ImageTransforms
+except ImportError:
+    from training.transforms import ImageTransforms
 
 
 class FinalModel:
-    def __init__(self):
-        with open(r"config.yml") as f:
-            self._config = yaml.safe_load(f)
+    def __init__(self, model_path, data_path):
 
-        self._path = self._config["specific_model_name_to_use"]
-        self._destination_path = self._config["create_train_test_dir"]["destination_path"]
+        self._path = model_path
+        self._destination_path = data_path
 
+        # try to load model on gpus, otherwise use gpus
         try:
             self.model = torch.load(self._path)
         except RuntimeError:
@@ -30,6 +28,8 @@ class FinalModel:
 
         self.val_transforms = None
         self.train_transforms = None
+        self._class_names = None
+        self._current_prediction = None
 
         self._set_transforms()
 
@@ -44,6 +44,7 @@ class FinalModel:
         base_dir = "test"
         base_path = os.path.join(self._destination_path, base_dir)
 
+        self._class_names = os.listdir(base_path)
         crash_or_normal = os.listdir(base_path)[np.random.choice(len(os.listdir(base_path)))]
         intermediate_path = os.path.join(base_path, crash_or_normal)
 
@@ -67,7 +68,7 @@ class FinalModel:
             self.train_transforms = transforms.vgg19_train_transforms
             self.val_transforms = transforms.vgg19_val_transforms
 
-    def preprocess_image(self, image: Union[str, Image.Image]) -> torch.tensor  :
+    def preprocess_image(self, image: Union[str, Image.Image]) -> torch.tensor:
         """
         Preprocesses image with the specified transforms, such that it can be given as input for the model
 
@@ -128,6 +129,7 @@ class FinalModel:
         # compute output
         prediction = self.model(input)
         _, winning_class = torch.max(prediction, dim=1)
+        self._current_prediction = self._class_names[winning_class]
 
         last_conv_layer_output = outputs[0]
 
@@ -161,22 +163,33 @@ class FinalModel:
         """
         # get image path
         img_path = self.sample_random_image()
-        #img = Image.open(img_path)
-
         img_transformed = f.preprocess_image(img_path)
 
         cam = f.get_class_activation_map(img_transformed)
 
         # create plots
-        fig, ax = plt.subplots()
+        fig, (ax1,ax2) = plt.subplots(1, 2)
 
         # remove fourth dimension and resample so matplotlib can display the image
-        ax.imshow(img_transformed.squeeze().permute(1, 2, 0), alpha=0.9)
-        ax.imshow(cam, alpha=0.5, cmap="jet")
+        ax1.imshow(img_transformed.squeeze().permute(1,2,0))
+        ax2.imshow(img_transformed.squeeze().permute(1, 2, 0), alpha=0.9)
+        ax2.imshow(cam, alpha=0.5, cmap="jet")
+        ax1.set_title(self._current_prediction)
         plt.axis("off")
         plt.show()
 
 
 if __name__ == "__main__":
-    f = FinalModel()
-    f.plot_cam()
+    with open(r"training/config.yml") as f:
+        config = yaml.safe_load(f)
+
+        model_path = config["specific_model_name_to_use"]
+        data_path = config["create_train_test_dir"]["destination_path"]
+
+    f = FinalModel(model_path,data_path)
+
+    while True:
+        try:
+            f.plot_cam()
+        except RuntimeError:
+            continue

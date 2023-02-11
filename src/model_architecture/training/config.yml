@@ -7,8 +7,7 @@ create_train_test_dir :
 
 image_path: 'D:\ML\DL\projects\insurance_image_recog\data4'
 model_to_use: 'EfficientNet'
-specific_model_name_to_use: 'D:\ML\DL\projects\insurance_image_recog\src\saved_models\torch_models\EfficientNet\050123_f1_score=1.0epoch_num90.torch'
-
+specific_model_name_to_use: 'D:\ML\DL\projects\insurance_image_recog\src\model_architecture\saved_models\torch_models\EfficientNet\060223_best_model.torch_model'
 train_verbosity: # what to print during train steps
         loss: True
         prediction: True

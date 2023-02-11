@@ -280,7 +280,6 @@ class BaseModel(ABC, nn.Module):
         self.train_loader = DeviceDataLoader(train_loader, device=self.device)
         self.val_loader = DeviceDataLoader(val_loader, device=self.device)
 
-
     def _get_class_weights(self, azure_train_path=None):
         """
         Collects the class weights by counting the items of each class to tackle class imbalance
@@ -448,7 +447,7 @@ class BaseModel(ABC, nn.Module):
             mlflow.set_tracking_uri(azure_workspace.get_mlflow_tracking_uri())
 
         else:
-            mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../mlruns"))
+            mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../../mlruns"))
 
         with mlflow.start_run(run_name=f"{self.name}_{self.today}"):
 
@@ -510,9 +509,6 @@ class BaseModel(ABC, nn.Module):
                 # changes --> local minima
                 lrs.step(metrics=result["val_loss"])
 
-                if max_val_acc < result["val_acc"]:
-                    max_val_acc = result["val_acc"]
-
                 # If early stopping is set to true in the config file the early stopper checks after every loop for
                 # early stop criterion
                 if early_stopping:
@@ -522,16 +518,13 @@ class BaseModel(ABC, nn.Module):
                     else:
                         print("No early stopping!")
 
-                # Save intermediate state of model every n epochs
-                if save_every_n_epoch is not None:
-                    if epoch % save_every_n_epoch == 0 and epoch != 0:
-                        self.save_model_intermediate_state(name=f"{self.today}_f1_score={result['val_f1']}",
-                                                           epoch=epoch)
-                        self.torch_save_model(name=f"{self.today}_f1_score={result['val_f1']}")
+                # save best model
+                if max_val_acc < result["val_acc"]:
+                    print("saved new best model")
+                    self.torch_save_model(name=f"{self.today}_best_model")
+                    mlflow.pytorch.log_model(self.model, f"{self.today}_best_model")
 
             mlflow.log_params(self.hparams_dict)
-            mlflow.pytorch.log_model(self.model, f"{self.today}_f1_score={result['val_f1']}")
-            self.save_model_intermediate_state(name=self.today, epoch=epoch)
 
     def predict(self, images):
         """
@@ -567,36 +560,6 @@ class BaseModel(ABC, nn.Module):
             with open(os.path.join("../saved_models/pickled_models", self.name, name + ".model"), "wb") as f:
                 pickle.dump(self, f)
 
-    def save_model_intermediate_state(self, name=None, epoch=None, mlflow_log=False):
-        """
-        Saves intermediate state of model during training after each given epoch
-
-        :param name: name of the model
-        :type name: str
-        :param epoch: number of epoch after which the model should be saved
-        :return: None
-        """
-        if name is None:
-            name = self.today
-
-        if epoch is None:
-            raise ValueError("Please give epoch as argument to intermediate save function in the train method!")
-
-        model_dir = os.path.join("../saved_models/pickled_models", self.name)
-
-        file_path = os.path.join(model_dir, name + f"epoch_num{epoch}" + ".model")
-
-        if os.path.exists(model_dir):
-            with open(file_path, "wb") as f:
-                pickle.dump(self, f)
-        else:
-            os.makedirs(os.path.join(model_dir, self.name))
-            with open(file_path, "wb") as f:
-                pickle.dump(self, f)
-
-        if mlflow_log:
-            mlflow.log_artifact(file_path, "final_model_pickled")
-
     def torch_save_model(self, name=None):
         """
         Saves torch version of model to reuse it as a plain torch model and for inference
@@ -608,7 +571,7 @@ class BaseModel(ABC, nn.Module):
         if name is None:
             name = self.today
         if os.path.exists(os.path.join("../saved_models/torch_models", self.name)):
-            torch.save(self.model, os.path.join("../saved_models", self.name, name + ".torch_model"))
+            torch.save(self.model, os.path.join("../saved_models/torch_models", self.name, name + ".torch_model"))
 
         else:
             os.makedirs(os.path.join("../saved_models/torch_models", self.name))

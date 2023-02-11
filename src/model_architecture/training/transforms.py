@@ -2,7 +2,7 @@ import torch
 import torchvision.transforms as tt
 import os
 
-from utils import ImageStats
+from .utils import ImageStats
 
 
 class ImageTransforms:
