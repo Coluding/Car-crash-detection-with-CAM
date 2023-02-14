@@ -1,7 +1,7 @@
 from PIL import Image
 import io
 import yaml
-from src.model_architecture.final_model import FinalModel
+from ..model_architecture.final_model import FinalModel
 
 
 def init():

@@ -30,13 +30,10 @@ def init_model_with_local_paths():
     return model
 
 
-def run_training():
-
+def main():
     model = init_model_with_local_paths()
-
     model.fit(patience=5, factor=0.1) # Learning rate scheduler kwargs
 
 
 if __name__ == "__main__":
-
-    run_training()
+    main()

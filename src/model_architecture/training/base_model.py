@@ -36,16 +36,11 @@ class BaseModel(ABC, nn.Module):
         self.val_loader = None
         self.history = []
         # TODO: Include Optuna
-        # TODO: Research Azure (train, app): Set up VM with NVIDIA GPU (Wer hat Entwicklerrechner?)
-        # TODO: Azure cognitive services
         # TODO: save model with ONNX
         # TODO: Logging
-        # TODO: Save torch model and load torch model additional to pickling
-        # TODO: Log f1 score
         # TODO: Deploy model in azure using ml studio
         # TODO: Register model in azure and log metrics in azure while training in the cloud
         # TODO: Num workers of validation set
-        # TODO: env variables in compute cluster
 
     def __str__(self):
         return self.model.__str__()
@@ -443,11 +438,13 @@ class BaseModel(ABC, nn.Module):
         :return: None
 
         """
+
+        # Set directory to log the mlflow data
         if azure_workspace:
             mlflow.set_tracking_uri(azure_workspace.get_mlflow_tracking_uri())
 
         else:
-            mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../../mlruns"))
+            mlflow.set_tracking_uri(r"file:///" + os.path.abspath("../mlruns"))
 
         with mlflow.start_run(run_name=f"{self.name}_{self.today}"):
 
