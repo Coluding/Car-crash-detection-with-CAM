@@ -30,22 +30,10 @@ def init_model_with_local_paths():
     return model
 
 
-def run_training():
-
-    ws = Workspace(
-        subscription_id="a0375d6b-a4f6-4c9e-9054-e9982f6f6765",
-        resource_group="GPU_Test",
-        workspace_name="InsuranceImageRecognition",
-        _location="westeu"
-    )
-
-    model = init_model_with_azure_remote_paths()
-
-    model.fit(azure_workspace=ws, patience=5, factor=0.1) # Learning rate scheduler kwargs
-    #model.torch_save_model()
-    #model.save_model()
+def main():
+    model = init_model_with_local_paths()
+    model.fit(patience=5, factor=0.1) # Learning rate scheduler kwargs
 
 
 if __name__ == "__main__":
-
-    run_training()
+    main()

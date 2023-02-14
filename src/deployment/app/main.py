@@ -3,25 +3,24 @@ import os
 import sys
 from fastapi import FastAPI, HTTPException, status, File, UploadFile
 from PIL import Image
-sys.path.append(os.path.abspath("./src/models"))
-
-from utils import *
-from transforms import ImageTransforms
-from final_model import FinalModel
-from efficient_net import EfficientNet
-
 
 dir_name = os.path.basename(os.path.normpath(os.getcwd()))
-
 if dir_name == "src":
-    rel_path = "models"
+    rel_path = "model_architecture"
+    sys.path.append(os.path.abspath("./model_architecture"))
+    sys.path.append(os.path.abspath("./model_architecture/training"))
 else:
-    rel_path = "src/models"
+    rel_path = "src/model_architecture"
+    sys.path.append(os.path.abspath("./src/model_architecture"))
+    sys.path.append(os.path.abspath("./src/model_architecture/training"))
 
+
+#from utils import *
+#from transforms import ImageTransforms
+from final_model import FinalModel
 
 module_path = os.path.abspath(rel_path)
 sys.path.append(module_path)
-print(sys.path)
 
 
 os.chdir(rel_path)
