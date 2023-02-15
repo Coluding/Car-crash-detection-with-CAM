@@ -15,7 +15,15 @@ except ImportError:
 
 
 class FinalModel:
-    def __init__(self, model_path, data_path):
+    def __init__(self, model_path, data_path=None):
+        """
+        Construcor of the final model used for production
+
+        :param model_path: path of the torch model
+        :type model_path: str
+        :param data_path: path of the image data used for creating random subplots of images
+        :type data_path: str
+        """
 
         self._path = model_path
         self._destination_path = data_path
@@ -40,6 +48,9 @@ class FinalModel:
         :return: path to random sampled image
         :rtype: str
         """
+
+        if self._destination_path is None:
+            raise ValueError("Cannot sample random image when destination path is null!")
 
         base_dir = "test"
         base_path = os.path.join(self._destination_path, base_dir)
