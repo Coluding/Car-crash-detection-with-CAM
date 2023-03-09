@@ -78,6 +78,11 @@ class FinalModel:
         elif "vgg19" in self._path.lower():
             self.train_transforms = transforms.vgg19_train_transforms
             self.val_transforms = transforms.vgg19_val_transforms
+        else:
+            #TODO welche transforms nehmen, wenn modell nicht mit name abgespeichert ist
+            self.train_transforms = transforms.efficient_net_train_transforms
+            self.val_transforms = transforms.efficient_net_val_transforms
+
 
     def preprocess_image(self, image: Union[str, Image.Image]) -> torch.tensor:
         """
@@ -197,7 +202,7 @@ if __name__ == "__main__":
         model_path = config["specific_model_name_to_use"]
         data_path = config["create_train_test_dir"]["destination_path"]
 
-    f = FinalModel(model_path,data_path)
+    f = FinalModel(model_path, data_path)
 
     while True:
         try:

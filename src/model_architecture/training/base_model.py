@@ -519,7 +519,8 @@ class BaseModel(ABC, nn.Module):
                 if max_val_acc < result["val_acc"]:
                     print("saved new best model")
                     self.torch_save_model(name=f"{self.today}_best_model")
-                    mlflow.pytorch.log_model(self.model, f"{self.today}_best_model")
+                    mlflow.pytorch.log_model(self.model, f"{epoch}_{result['val_f1']:.1f}_best_model_mlflow")
+                    max_val_acc = result["val_acc"]
 
             mlflow.log_params(self.hparams_dict)
 

@@ -31,8 +31,13 @@ def init_model_with_local_paths():
 
 
 def main():
-    model = init_model_with_local_paths()
-    model.fit(patience=5, factor=0.1) # Learning rate scheduler kwargs
+    workspace = Workspace(subscription_id='41389919-46b1-46b4-819a-f1ccb00cc40c',
+                        resource_group='gpu_training',
+                        workspace_name='ImageClassification',
+                        _location="westeu",
+                        )
+    model = init_model_with_azure_remote_paths()
+    model.fit(patience=5, factor=0.1, azure_workspace=workspace) # Learning rate scheduler kwargs
 
 
 if __name__ == "__main__":
