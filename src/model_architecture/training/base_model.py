@@ -21,7 +21,7 @@ class BaseModel(ABC, nn.Module):
         Constructor of base model
         """
         super().__init__()
-        with open("config.yml") as y:
+        with open("config/config.yml") as y:
             self._config_file = yaml.safe_load(y)
 
         self.device = get_default_device()

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as tt
 import os
 import shutil
-
+import json
 
 def get_default_device():
     """Pick GPU if available, else CPU"""
@@ -73,7 +73,6 @@ class ImageStats:
     def __init__(self, image_path):
         self._image_path = image_path
         self.image_data = None
-        self._load_images()
 
     def _load_images(self):
         """
@@ -94,6 +93,7 @@ class ImageStats:
         :return: Mean and std of images
         :rtype: tuple
         """
+        self._load_images()
         all_means = torch.zeros((len(self.image_data), 3))
         all_stds = torch.zeros((len(self.image_data), 3))
         for num, batch in enumerate(self.image_data):
@@ -103,6 +103,34 @@ class ImageStats:
                 all_stds[num][channel] = torch.std(data[:, channel, :, :]).item()
 
         return torch.mean(all_means, dim=0), torch.mean(all_stds, dim=0)
+
+    def load_stats_config(self, name=None):
+        if name is None:
+            name = "image_stats.json"
+
+        with open(os.path.join("config", name), "r") as f:
+            data = json.load(f)
+
+        means = [float(x) for x in data["means"]]
+        stds = [float(x) for x in data["stds"]]
+        return means, stds
+
+    def save_stats_config(self, name=None):
+        stats = self.compute_stats()
+        means = stats[0].detach().numpy()
+        stds = stats[1].detach().numpy()
+        means = list(means)
+        stds = list(stds)
+        means = [str(x) for x in means]
+        stds = [str(x) for x in stds]
+        data = {"means": means,
+                "stds": stds}
+
+        if name is None:
+            name = "image_stats.json"
+
+        with open(os.path.join("config", name), "w") as f:
+            json.dump(data, f)
 
 
 def create_train_and_test_dir(img_data_path, split_ratio, destination):
