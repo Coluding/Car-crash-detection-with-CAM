@@ -190,7 +190,7 @@ class FinalModel:
         fig, (ax1, ax2) = plt.subplots(1, 2)
 
         # remove fourth dimension and resample so matplotlib can display the image
-        ax1.imshow(img_transformed_denormalized.squeeze().permute(1,2,0))
+        ax1.imshow(img_transformed_denormalized.squeeze().permute(1, 2, 0))
         ax2.imshow(img_transformed_denormalized.squeeze().permute(1, 2, 0), alpha=0.9)
         ax2.imshow(cam, alpha=0.5, cmap="jet")
         ax1.set_title(f"Prediction: {self._current_prediction}")
