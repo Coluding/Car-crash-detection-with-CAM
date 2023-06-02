@@ -26,11 +26,11 @@ resnet:
             - 6
             - 0
  ```
- The model can be trained in the Azure Cloud if the correct settings are made and the Azure connection is established. 
- The training process is monitored via MLFlow.
- If possible GPUs will be used.
- The final model class can be used to export the trained model. It contains a method that computes the CAM of the feature map of the last convolutional layer.
- The model has an validation accuracy of 100%.
+ - The model can be trained in the Azure Cloud if the correct settings are made and the Azure connection is established. 
+ - The training process is monitored via MLFlow.
+ - If possible GPUs will be used.
+ - The final model class can be used to export the trained model. It contains a method that computes the CAM of the feature map of the last convolutional layer.
+ - The model has an validation accuracy of 100%.
  
  ### 2.2 Deplyoing the model
  The fully trained model is deployed on some local endpoint. This will be improved in the future.
