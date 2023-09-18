@@ -108,7 +108,7 @@ class ImageStats:
         if name is None:
             name = "image_stats.json"
 
-        with open(os.path.join("config", name), "r") as f:
+        with open(name, "r") as f:
             data = json.load(f)
 
         means = [float(x) for x in data["means"]]

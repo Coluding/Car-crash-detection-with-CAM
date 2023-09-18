@@ -1,13 +1,16 @@
 import requests
-
+from PIL import Image
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 if __name__ == "__main__":
 
-    #resp = requests.post("http://127.0.0.1:8000/predict",
-    #                     files={'file': open(
-    #                         r"C:\Users\lbierling\Downloads\crash3.jpg",
-    #                         "rb")})
+    response = requests.post("http://127.0.0.1:8000/predict",
+                         files={'file': open(
+                             r"C:\Users\lbierling\Downloads\crash1.jfif",
+                                "rb")})
 
-    resp = requests.post("http://127.0.0.1:4000/",
-                         files={'file': "test"})
-    print(resp.json())
+    # Check if the request was successful
+    img = Image.open(BytesIO(response.content))
+    plt.imshow(img)
+    plt.show()

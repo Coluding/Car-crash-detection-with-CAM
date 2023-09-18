@@ -11,11 +11,11 @@ import torch
 try:
     from insurance_image_recog.src.model_architecture.training.transforms import ImageTransforms
 except ImportError:
-    from training.transforms import ImageTransforms
+    from src.model_architecture.training.transforms import ImageTransforms
 
 
 class FinalModel:
-    def __init__(self, model_path, data_path=None):
+    def __init__(self, model_path, data_path=None, image_stats_path=None):
         """
         Construcor of the final model used for production
 
@@ -27,6 +27,7 @@ class FinalModel:
 
         self._path = model_path
         self._destination_path = data_path
+        self._image_stats_path = image_stats_path
 
         # try to load model on gpu, otherwise use cpu
         try:
@@ -34,7 +35,7 @@ class FinalModel:
         except RuntimeError:
             self.model = torch.load(self._path, map_location=torch.device('cpu'))
 
-        self._class_names = ["Crash", "Normal"] #TODO: Anpassung nötig auf usecase
+        self._class_names = ["Crash", "Normal"] # TODO: Anpassung nötig auf usecase
 
         self.transforms = None
         self.val_transforms = None
@@ -71,7 +72,7 @@ class FinalModel:
 
         :return: None
         """
-        self.transforms = ImageTransforms(self._destination_path)
+        self.transforms = ImageTransforms(self._destination_path, self._image_stats_path)
         if "efficientnet" in self._path.lower():
             self.train_transforms = self.transforms.efficient_net_train_transforms
             self.val_transforms = self.transforms.efficient_net_val_transforms
@@ -80,7 +81,7 @@ class FinalModel:
             self.train_transforms = self.transforms.vgg19_train_transforms
             self.val_transforms = self.transforms.vgg19_val_transforms
         else:
-            #TODO welche transforms nehmen, wenn modell nicht mit name abgespeichert ist
+            # TODO welche transforms nehmen, wenn modell nicht mit name abgespeichert ist
             self.train_transforms = self.transforms.efficient_net_train_transforms
             self.val_transforms = self.transforms.efficient_net_val_transforms
 
@@ -124,7 +125,7 @@ class FinalModel:
         :param input: input image of for which the feature map should be computed
         :type input: PIL.Image
         :return: tensor of the class activation map
-        :rtype: torch.tensor
+        :rtype: torch.Tensor
         """
 
         input_shape = input.shape[-1]
@@ -173,6 +174,12 @@ class FinalModel:
 
         return class_activation_map
 
+    def get_cam(self, img):
+        img_transformed, img_transformed_denormalized = self.preprocess_image(img)
+        cam = self.get_class_activation_map(img_transformed)
+
+        return cam
+
     def plot_cam(self, img_path=None):
         """
         Plots the class activation map for the image
@@ -183,8 +190,8 @@ class FinalModel:
         if not img_path:
             img_path = self.sample_random_image()
 
-        img_transformed, img_transformed_denormalized = f.preprocess_image(img_path)
-        cam = f.get_class_activation_map(img_transformed)
+        img_transformed, img_transformed_denormalized = self.preprocess_image(img_path)
+        cam = self.get_class_activation_map(img_transformed)
 
         # create plots
         fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -206,6 +213,7 @@ if __name__ == "__main__":
 
         model_path = config["specific_model_name_to_use"]
         data_path = config["create_train_test_dir"]["destination_path"]
+        image_stats_path = config["image_stats_path"]
 
     f = FinalModel(model_path, data_path)
     f.plot_cam(r"C:\Users\lbierling\Downloads\crash3.jpg")

@@ -9,13 +9,12 @@ except ImportError:
 
 
 class ImageTransforms:
-    def __init__(self, destination_path):
+    def __init__(self, destination_path, config_path=None):
         image_stats_train = ImageStats(destination_path)
-        try:
-            self.stats = image_stats_train.load_stats_config()
+        if config_path is not None:
+            self.stats = image_stats_train.load_stats_config(config_path)
             print("using config")
-        except Exception as E:
-            print(E)
+        else:
             self.stats = image_stats_train.compute_stats()
             image_stats_train.save_stats_config()
 

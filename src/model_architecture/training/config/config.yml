@@ -7,6 +7,7 @@ create_train_test_dir :
 
 image_path: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\data3'
 model_to_use: 'EfficientNet'
+image_stats_path: '../training/config/image_stats.json'
 specific_model_name_to_use: 'C:\Users\lbierling\OneDrive - KPMG\Projekte\Versicherung-Fehlererkennung\Project\image_recog_git\image_recog_git\insurance_image_recog\src\model_architecture\56_1.0_best_model_mlflow\data\model.pth'
 train_verbosity: # what to print during train steps
         loss: True
