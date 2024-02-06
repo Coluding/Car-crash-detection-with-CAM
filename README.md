@@ -1,4 +1,4 @@
-# insurance_image_recog
+# Crash detection with Class Activation Maps
 
 ## 1. Goal
 The goal of this repo is to classify car crash images into crash and non crash. Additionally, it should be shown where the crash is found on the image. This is done via Class Activation Maps (CAMs) without gradients.
