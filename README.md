@@ -1,7 +1,8 @@
 # insurance_image_recog
 
 ## 1. Goal
-The goal of this repo is to classify car crash images into crash and non crash. Additionally, it should be shown where the crash is found on the image. This is done via Class Activation Maps (CAMs) without gradients
+The goal of this repo is to classify car crash images into crash and non crash. Additionally, it should be shown where the crash is found on the image. This is done via Class Activation Maps (CAMs) without gradients.
+This allows for localisation of the crash without pure object detection algorithms.
 
 ## 2. Structure
 ### 2.1 Training of the model
@@ -34,5 +35,9 @@ resnet:
  
  ### 2.2 Deplyoing the model
  The fully trained model is deployed on some local endpoint. This will be improved in the future.
- 
+
+ ### 2.3 Example output
+ After training the model predicts wether there is a crash or not. The activation map shows where the crash was found on the image.
+ ![image](https://github.com/Coluding/Car-crash-detection-with-CAM/assets/98786106/cdde01d9-ab69-43f3-a4fc-296517a9735e)
+
  
