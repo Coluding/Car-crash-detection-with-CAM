@@ -40,4 +40,12 @@ resnet:
  After training the model predicts wether there is a crash or not. The activation map shows where the crash was found on the image.
  ![image](https://github.com/Coluding/Car-crash-detection-with-CAM/assets/98786106/cdde01d9-ab69-43f3-a4fc-296517a9735e)
 
+ ### 2.4 Deployment
+ Currently the interactive session does not work, 
+ because it costs to much to host the backend in the cloud. 
+ Nevertheless I have an docker image of the backend which you can find here:
+ https://hub.docker.com/r/coluding/cam-backend.
+ 
+                           
+
  
